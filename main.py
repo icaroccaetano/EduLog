@@ -142,6 +142,28 @@ async def cadastrar_usuario(
         {"user": user},
     )
 
+@app.post("/admin/cadastrar")
+async def admin_cadastrar_post(
+    request: Request,
+    email: str = Form(...),
+    senha: str = Form(...),
+    user: dict = Depends(require_login),
+):
+    try:
+        created = firebase_auth_sdk.create_user(email=email, password=senha)
+    except Exception:
+        # TODO: tratar erros específicos (email já existe, senha fraca, etc.)
+        return templates.TemplateResponse(
+            request,
+            "cadastrar_usuario.html",
+            {"user": user, "error": "Não foi possível criar o usuário."},
+        )
+    return templates.TemplateResponse(
+        request,
+        "cadastrar_usuario.html",
+        {"user": user, "success": f"Usuário criado: {created.uid}"},
+    )
+
 
 @app.get("/logout")
 async def logout(
