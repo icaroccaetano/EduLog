@@ -1,16 +1,30 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Dashboard</title>
-</head>
-<body>
-  <h1>Dashboard</h1>
-  <p>Olá, {{ user.email }}</p>
-  <nav>
-    <a href="/admin/cadastrar">Cadastrar utilizador</a>
-    |
-    <a href="/logout">Sair</a>
-  </nav>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Dashboard | EduLog{% endblock %}
+
+{% block content %}
+<section class="mb-4">
+  <h1 class="h3 fw-semibold mb-1">Dashboard</h1>
+  <p class="text-body-secondary mb-0">Bem-vinda, {{ user.email }}.</p>
+</section>
+
+<section class="row g-3">
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5">Atalhos</h2>
+        <p class="text-body-secondary">Acesse as ações mais usadas no dia a dia.</p>
+        <a href="/admin/cadastrar" class="btn btn-primary">Cadastrar usuário</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5">Organização das aulas</h2>
+        <p class="text-body-secondary mb-0">Use este painel como ponto central para manter turmas, horários e registros de aula sempre em ordem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

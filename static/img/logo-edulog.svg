@@ -1,0 +1,13 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="edulogGradient" x1="14" y1="12" x2="84" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D6EFD"/>
+      <stop offset="1" stop-color="#0A58CA"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="76" height="76" rx="22" fill="url(#edulogGradient)"/>
+  <rect x="27" y="28" width="42" height="40" rx="6" fill="white" fill-opacity="0.94"/>
+  <rect x="33" y="36" width="24" height="4" rx="2" fill="#0D6EFD"/>
+  <rect x="33" y="45" width="30" height="4" rx="2" fill="#5A8DEE"/>
+  <rect x="33" y="54" width="18" height="4" rx="2" fill="#9BB9F4"/>
+</svg>
