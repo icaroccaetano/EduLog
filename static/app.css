@@ -46,3 +46,128 @@ body {
 .list-group-item {
   background: transparent;
 }
+
+.dashboard-hero {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid #e5ebf2;
+  border-radius: 1rem;
+  padding: 1rem 1.15rem;
+}
+
+.dashboard-kicker {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #55708a;
+}
+
+.dashboard-metricas {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.metrica-item {
+  min-width: 92px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  background: #f7f9fc;
+  border: 1px solid #e4eaf1;
+}
+
+.metrica-item strong {
+  font-size: 1.05rem;
+  color: #23374c;
+}
+
+.metrica-rotulo {
+  display: block;
+  font-size: 0.74rem;
+  color: #6b7a89;
+}
+
+.painel-registros,
+.painel-atividades {
+  background: #ffffff;
+  border: 1px solid #e5ebf2 !important;
+}
+
+.btn-registro {
+  min-width: 180px;
+}
+
+.alerta-hoje {
+  background: #fff3f5;
+  border: 1px solid #f2d1d7;
+  color: #7f1d2d;
+}
+
+.card-cadastro-aluno {
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.card-cadastro-aluno.cadastro-bloqueado {
+  opacity: 0.65;
+  filter: grayscale(0.15);
+}
+
+.card-atividade-hoje {
+  background: #fff6f7;
+  border: 1px solid #efc4cc !important;
+  box-shadow: inset 4px 0 0 #dc3545, 0 8px 20px rgba(220, 53, 69, 0.08);
+}
+
+.card-atividade-amanha {
+  background: #fff9f1;
+  border: 1px solid #f2dfbd !important;
+  box-shadow: inset 4px 0 0 #fd7e14, 0 8px 20px rgba(253, 126, 20, 0.08);
+}
+
+.card-atividade {
+  background: #ffffff;
+  border: 1px solid #e8edf3 !important;
+  box-shadow: 0 6px 16px rgba(27, 44, 67, 0.04);
+}
+
+.tabela-atividade th,
+.tabela-atividade td {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #edf1f5;
+  vertical-align: top;
+  font-size: 0.93rem;
+}
+
+.tabela-atividade tr:last-child th,
+.tabela-atividade tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabela-atividade th {
+  width: 105px;
+  font-weight: 600;
+  color: #5c6672;
+}
+
+.bloco-prioridade-hoje {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  background: #fdecef;
+  border: 1px solid #f4cbd3;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.linha-prioridade {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 99px;
+  background: #dc3545;
+}
+
+.estado-vazio {
+  border: 1px dashed #d8e0ea;
+  border-radius: 0.8rem;
+  padding: 1rem;
+  background: #fafcff;
+}
