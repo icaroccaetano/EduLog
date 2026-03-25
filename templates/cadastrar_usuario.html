@@ -6,9 +6,19 @@
 </head>
 <body>
   <h1>Cadastrar Usuário</h1>
+  {% if error %}
+  <p role="alert">{{ error }}</p>
+  {% endif %}
+  {% if success %}
+  <p role="status">{{ success }}</p>
+  {% endif %}
+  <form method="post" action="/admin/cadastrar">
+    <label>E-mail <input type="email" name="email" required></label>
+    <label>Senha <input type="password" name="senha" minlength="6" required></label>
+    <button type="submit">Cadastrar</button>
+  </form>
   <nav>
-    <a href="/dashboard">Dashboard</a>
-    |
+    <a href="/dashboard">Dashboard</a> |
     <a href="/logout">Sair</a>
   </nav>
 </body>
