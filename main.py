@@ -152,7 +152,7 @@ async def admin_cadastrar_post(
     try:
         created = firebase_auth_sdk.create_user(email=email, password=senha)
     except Exception:
-        # ideal: tratar erros específicos (email já existe, senha fraca, etc.)
+        # TODO: tratar erros específicos (email já existe, senha fraca, etc.)
         return templates.TemplateResponse(
             request,
             "cadastrar_usuario.html",
