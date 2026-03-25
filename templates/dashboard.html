@@ -3,28 +3,412 @@
 {% block title %}Dashboard | EduLog{% endblock %}
 
 {% block content %}
-<section class="mb-4">
-  <h1 class="h3 fw-semibold mb-1">Dashboard</h1>
-  <p class="text-body-secondary mb-0">Bem-vinda, {{ user.email }}.</p>
+<section class="dashboard-hero mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
+    <div>
+      <p class="dashboard-kicker mb-1">Painel da Professora</p>
+      <h1 class="h3 fw-semibold mb-1">Dashboard</h1>
+      <p class="text-body-secondary mb-0">Bem-vinda, {{ user.email }}.</p>
+    </div>
+    <div class="dashboard-metricas">
+      <div class="metrica-item">
+        <span class="metrica-rotulo">Alunos</span>
+        <strong>{{ alunos|length }}</strong>
+      </div>
+      <div class="metrica-item">
+        <span class="metrica-rotulo">Atividades</span>
+        <strong>{{ atividades|length }}</strong>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section class="row g-3">
-  <div class="col-12 col-md-6">
-    <div class="card border-0 shadow-sm h-100">
+{% if erro %}
+<div class="alert alert-danger" role="alert">{{ erro }}</div>
+{% endif %}
+{% if sucesso %}
+<div class="alert alert-success" role="status">{{ sucesso }}</div>
+{% endif %}
+{% if quantidade_atividades_hoje > 0 %}
+<div class="alert alerta-hoje d-flex justify-content-between align-items-center flex-wrap gap-2" role="status">
+  <div>
+    <strong>Atividades de hoje:</strong>
+    {{ quantidade_atividades_hoje }} pendente(s) para {{ data_atual[8:10] }}-{{ data_atual[5:7] }}-{{ data_atual[0:4] }}.
+  </div>
+  <span class="badge text-bg-danger">Prioridade do dia</span>
+</div>
+{% endif %}
+
+<section class="row g-4 align-items-start dashboard-grid">
+  <div class="col-12 col-xl-4">
+    <div class="card border-0 shadow-sm painel-registros">
       <div class="card-body">
-        <h2 class="h5">Atalhos</h2>
-        <p class="text-body-secondary">Acesse as ações mais usadas no dia a dia.</p>
-        <a href="/admin/cadastrar" class="btn btn-primary">Cadastrar usuário</a>
+        <h2 class="h5 mb-2">Novo registro</h2>
+        <p class="text-body-secondary mb-4">
+          Abra o pop-up para registrar uma atividade e vincular um aluno.
+          Se o aluno nao existir, cadastre no mesmo formulario.
+        </p>
+        <button
+          type="button"
+          class="btn btn-primary btn-registro"
+          data-bs-toggle="modal"
+          data-bs-target="#modalRegistroAtividade"
+        >
+          Registrar atividade
+        </button>
       </div>
     </div>
   </div>
-  <div class="col-12 col-md-6">
-    <div class="card border-0 shadow-sm h-100">
+
+  <div class="col-12 col-xl-8">
+    <div class="card border-0 shadow-sm painel-atividades">
       <div class="card-body">
-        <h2 class="h5">Organização das aulas</h2>
-        <p class="text-body-secondary mb-0">Use este painel como ponto central para manter turmas, horários e registros de aula sempre em ordem.</p>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+          <h2 class="h5 mb-0">Atividades registradas</h2>
+        </div>
+
+        {% if atividades %}
+        <div class="row g-3">
+          {% for atividade in atividades %}
+          <div class="col-12 col-md-6">
+            <article class="card card-atividade border-0 h-100 {% if atividade.eh_hoje %}card-atividade-hoje{% elif atividade.eh_amanha %}card-atividade-amanha{% endif %}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                  <h3 class="h6 mb-0">Registro de atividade</h3>
+                  {% if atividade.eh_hoje %}
+                  <span class="badge text-bg-danger">Hoje</span>
+                  {% elif atividade.eh_amanha %}
+                  <span class="badge text-bg-warning">Amanha</span>
+                  {% endif %}
+                </div>
+
+                <table class="table table-sm table-borderless tabela-atividade mb-0">
+                  <tbody>
+                    <tr>
+                      <th scope="row">Titulo</th>
+                      <td>{{ atividade.titulo }}</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Aluno</th>
+                      <td><span class="badge {{ atividade.badge_cor }}">{{ atividade.aluno_nome }}</span></td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Data e hora</th>
+                      <td class="{% if atividade.eh_hoje %}text-danger-emphasis fw-semibold{% endif %}">
+                        {{ atividade.data_realizacao_formatada }} as {{ atividade.horario_realizacao[:5] }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Status</th>
+                      <td>
+                        {% if atividade.eh_hoje %}
+                        <span class="badge text-bg-danger">Hoje</span>
+                        {% elif atividade.dias_para_atividade is not none %}
+                        <span class="badge text-bg-light border text-dark">Em {{ atividade.dias_para_atividade }} dia(s)</span>
+                        {% else %}
+                        <span class="badge text-bg-light border text-dark">Agendada</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Descricao</th>
+                      <td>{{ atividade.descricao if atividade.descricao else "-" }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {% if atividade.eh_hoje %}
+                <div class="bloco-prioridade-hoje mt-3">
+                  <div class="linha-prioridade"></div>
+                  <div>
+                    <p class="mb-1 fw-semibold text-danger-emphasis">Execucao recomendada hoje</p>
+                    <small class="text-danger-emphasis">Horario previsto: {{ atividade.horario_realizacao[:5] }}</small>
+                  </div>
+                </div>
+                {% endif %}
+
+                <div class="pt-3 d-flex justify-content-end">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary btn-sm botao-editar-atividade"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalEditarAtividade"
+                    data-atividade-id="{{ atividade.id }}"
+                    data-atividade-titulo="{{ atividade.titulo }}"
+                    data-atividade-descricao="{{ atividade.descricao | default('', true) }}"
+                    data-atividade-aluno-id="{{ atividade.aluno_id }}"
+                    data-atividade-data="{{ atividade.data_realizacao }}"
+                    data-atividade-horario="{{ atividade.horario_realizacao[:5] }}"
+                  >
+                    Editar
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="estado-vazio">
+          <p class="text-body-secondary mb-1">Nenhuma atividade registrada ainda.</p>
+          <small class="text-body-secondary">Use o botao "Registrar atividade" para criar o primeiro registro.</small>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
 </section>
+
+<div class="modal fade" id="modalRegistroAtividade" tabindex="-1" aria-labelledby="modalRegistroAtividadeLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h3 class="modal-title h5" id="modalRegistroAtividadeLabel">Registrar atividade</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <form method="post" action="/dashboard/registro" class="vstack gap-3">
+          <div>
+            <label for="titulo" class="form-label">Titulo da atividade</label>
+            <input id="titulo" class="form-control" type="text" name="titulo" required placeholder="Ex.: Leitura do capitulo 3">
+          </div>
+
+          <div>
+            <label for="descricao" class="form-label">Descricao (opcional)</label>
+            <textarea id="descricao" class="form-control" name="descricao" rows="3" placeholder="Observacoes da atividade"></textarea>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="data_realizacao" class="form-label">Data da atividade</label>
+              <input id="data_realizacao" class="form-control" type="date" name="data_realizacao" required min="{{ data_atual }}">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="horario_realizacao" class="form-label">Horario da atividade</label>
+              <input id="horario_realizacao" class="form-control" type="time" name="horario_realizacao" required>
+            </div>
+          </div>
+
+          <div>
+            <label for="aluno_id" class="form-label">Escolher aluno cadastrado</label>
+            <select id="aluno_id" class="form-select" name="aluno_id">
+              <option value="">Selecione...</option>
+              {% for aluno in alunos %}
+              <option value="{{ aluno.id }}">{{ aluno.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="card border-0 bg-light-subtle card-cadastro-aluno" id="cardCadastroAluno">
+            <div class="card-body p-3">
+              <button
+                id="botaoCadastrarAluno"
+                class="btn btn-outline-primary btn-sm w-100"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#cadastroNovoAluno"
+                aria-expanded="false"
+                aria-controls="cadastroNovoAluno"
+              >
+                Cadastrar aluno
+              </button>
+
+              <div class="collapse mt-3" id="cadastroNovoAluno">
+                <div class="vstack gap-3">
+                  <div>
+                    <label for="novo_aluno_nome" class="form-label">Nome</label>
+                    <input id="novo_aluno_nome" class="form-control" type="text" name="novo_aluno_nome" placeholder="Nome do aluno">
+                  </div>
+                  <div>
+                    <label for="novo_aluno_data_nascimento" class="form-label">Data de nascimento</label>
+                    <input id="novo_aluno_data_nascimento" class="form-control" type="date" name="novo_aluno_data_nascimento" min="1900-01-01" max="{{ data_atual }}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar registro</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalEditarAtividade" tabindex="-1" aria-labelledby="modalEditarAtividadeLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h3 class="modal-title h5" id="modalEditarAtividadeLabel">Editar atividade</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <form method="post" action="/dashboard/atividade/editar" class="vstack gap-3">
+          <input type="hidden" id="editar_atividade_id" name="atividade_id">
+
+          <div>
+            <label for="editar_titulo" class="form-label">Titulo da atividade</label>
+            <input id="editar_titulo" class="form-control" type="text" name="titulo" required>
+          </div>
+
+          <div>
+            <label for="editar_descricao" class="form-label">Descricao (opcional)</label>
+            <textarea id="editar_descricao" class="form-control" name="descricao" rows="3"></textarea>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="editar_data_realizacao" class="form-label">Data da atividade</label>
+              <input id="editar_data_realizacao" class="form-control" type="date" name="data_realizacao" required min="{{ data_atual }}">
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="editar_horario_realizacao" class="form-label">Horario da atividade</label>
+              <input id="editar_horario_realizacao" class="form-control" type="time" name="horario_realizacao" required>
+            </div>
+          </div>
+
+          <div>
+            <label for="editar_aluno_id" class="form-label">Aluno vinculado</label>
+            <select id="editar_aluno_id" class="form-select" name="aluno_id" required>
+              <option value="">Selecione...</option>
+              {% for aluno in alunos %}
+              <option value="{{ aluno.id }}">{{ aluno.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar edicao</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const limparMensagensDaUrl = () => {
+      const urlAtual = new URL(window.location.href);
+      if (!urlAtual.searchParams.has("erro") && !urlAtual.searchParams.has("sucesso")) {
+        return;
+      }
+      urlAtual.searchParams.delete("erro");
+      urlAtual.searchParams.delete("sucesso");
+      const novaUrl = `${urlAtual.pathname}${urlAtual.search ? `?${urlAtual.searchParams.toString()}` : ""}${urlAtual.hash}`;
+      window.history.replaceState({}, "", novaUrl);
+    };
+
+    const seletorAluno = document.getElementById("aluno_id");
+    const cardCadastro = document.getElementById("cardCadastroAluno");
+    const botaoCadastro = document.getElementById("botaoCadastrarAluno");
+    const blocoCadastro = document.getElementById("cadastroNovoAluno");
+    const campoNome = document.getElementById("novo_aluno_nome");
+    const campoData = document.getElementById("novo_aluno_data_nascimento");
+    const campoDataAtividade = document.getElementById("data_realizacao");
+    const campoHorarioAtividade = document.getElementById("horario_realizacao");
+    const campoEditarId = document.getElementById("editar_atividade_id");
+    const campoEditarTitulo = document.getElementById("editar_titulo");
+    const campoEditarDescricao = document.getElementById("editar_descricao");
+    const campoEditarAluno = document.getElementById("editar_aluno_id");
+    const campoEditarData = document.getElementById("editar_data_realizacao");
+    const campoEditarHorario = document.getElementById("editar_horario_realizacao");
+    const modalEditar = document.getElementById("modalEditarAtividade");
+
+    const preencherCamposEdicao = (botao) => {
+      if (!botao || !campoEditarId || !campoEditarTitulo || !campoEditarDescricao || !campoEditarAluno || !campoEditarData || !campoEditarHorario) return;
+      campoEditarId.value = botao.dataset.atividadeId || "";
+      campoEditarTitulo.value = botao.dataset.atividadeTitulo || "";
+      campoEditarDescricao.value = botao.dataset.atividadeDescricao || "";
+      campoEditarAluno.value = botao.dataset.atividadeAlunoId || "";
+      campoEditarData.value = botao.dataset.atividadeData || "";
+      campoEditarHorario.value = botao.dataset.atividadeHorario || "";
+      atualizarLimiteHorarioEdicao();
+    };
+
+    const atualizarLimiteHorario = () => {
+      if (!campoDataAtividade || !campoHorarioAtividade) return;
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, "0");
+      const dia = String(agora.getDate()).padStart(2, "0");
+      const hoje = `${ano}-${mes}-${dia}`;
+      const hora = String(agora.getHours()).padStart(2, "0");
+      const minuto = String(agora.getMinutes()).padStart(2, "0");
+      const horarioAtual = `${hora}:${minuto}`;
+
+      if (campoDataAtividade.value === hoje) {
+        campoHorarioAtividade.min = horarioAtual;
+        if (campoHorarioAtividade.value && campoHorarioAtividade.value < horarioAtual) {
+          campoHorarioAtividade.value = horarioAtual;
+        }
+      } else {
+        campoHorarioAtividade.removeAttribute("min");
+      }
+    };
+
+    if (seletorAluno && cardCadastro && botaoCadastro && blocoCadastro && window.bootstrap) {
+      const instanciaColapso = bootstrap.Collapse.getOrCreateInstance(blocoCadastro, { toggle: false });
+
+      const atualizarEstadoCadastro = () => {
+        const alunoSelecionado = Boolean(seletorAluno.value);
+        botaoCadastro.disabled = alunoSelecionado;
+        cardCadastro.classList.toggle("cadastro-bloqueado", alunoSelecionado);
+        if (alunoSelecionado) {
+          instanciaColapso.hide();
+          if (campoNome) campoNome.value = "";
+          if (campoData) campoData.value = "";
+        }
+      };
+
+      seletorAluno.addEventListener("change", atualizarEstadoCadastro);
+      atualizarEstadoCadastro();
+    }
+
+    if (campoDataAtividade) {
+      campoDataAtividade.addEventListener("change", atualizarLimiteHorario);
+      atualizarLimiteHorario();
+    }
+
+    const atualizarLimiteHorarioEdicao = () => {
+      if (!campoEditarData || !campoEditarHorario) return;
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, "0");
+      const dia = String(agora.getDate()).padStart(2, "0");
+      const hoje = `${ano}-${mes}-${dia}`;
+      const hora = String(agora.getHours()).padStart(2, "0");
+      const minuto = String(agora.getMinutes()).padStart(2, "0");
+      const horarioAtual = `${hora}:${minuto}`;
+
+      if (campoEditarData.value === hoje) {
+        campoEditarHorario.min = horarioAtual;
+      } else {
+        campoEditarHorario.removeAttribute("min");
+      }
+    };
+
+    if (modalEditar) {
+      modalEditar.addEventListener("show.bs.modal", (evento) => {
+        preencherCamposEdicao(evento.relatedTarget);
+      });
+    }
+
+    document.addEventListener("click", (evento) => {
+      const botao = evento.target.closest(".botao-editar-atividade");
+      if (!botao) return;
+      preencherCamposEdicao(botao);
+    });
+
+    if (campoEditarData) {
+      campoEditarData.addEventListener("change", atualizarLimiteHorarioEdicao);
+    }
+
+    limparMensagensDaUrl();
+  })();
+</script>
 {% endblock %}
