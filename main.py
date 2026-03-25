@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import auth as firebase_auth_sdk
 from firebase_admin import credentials
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -17,8 +17,8 @@ from starlette.middleware.sessions import SessionMiddleware
 import uvicorn
 
 import firebase_auth
+import lesson_logs
 
-# Certifique-se de que o arquivo firebase_key.json esteja na raiz do projeto.
 load_dotenv()
 
 
@@ -110,6 +110,15 @@ _ERROR_QUERY_MESSAGES = {
     "config": "Servidor nao configurado para login (Firebase ou variaveis de ambiente).",
     "server": "Erro no servidor. Tente novamente.",
 }
+
+
+def _empty_log_form_data() -> dict:
+    return {
+        "data_aula": "",
+        "professora": "",
+        "conteudo": "",
+        "alunos": "",
+    }
 
 
 async def require_login(request: Request) -> UsuarioSessao:
@@ -338,6 +347,181 @@ async def dashboard(
             "sucesso": request.query_params.get("sucesso", ""),
             "data_atual": date.today().isoformat(),
         },
+    )
+
+
+@app.get("/logs")
+async def logs_list(
+    request: Request,
+    data_aula: str = Query(default=""),
+    professora: str = Query(default=""),
+    aluno: str = Query(default=""),
+    user: UsuarioSessao = Depends(require_login),
+):
+    filters = lesson_logs.LessonLogFilters(
+        data_aula=data_aula,
+        professora=professora,
+        aluno=aluno,
+    )
+    logs = []
+    error = ""
+
+    try:
+        if firebase_app_ready:
+            logs = lesson_logs.list_lesson_logs(filters)
+        else:
+            error = "Firebase nao esta disponivel para consultar os logs."
+    except Exception:
+        logger.exception("Falha ao listar logs de aula")
+        error = "Nao foi possivel carregar os logs agora."
+
+    return templates.TemplateResponse(
+        request,
+        "logs.html",
+        {
+            "user": user,
+            "logs": logs,
+            "filters": filters,
+            "error": error,
+        },
+    )
+
+
+@app.get("/logs/novo")
+async def novo_log(
+    request: Request,
+    user: UsuarioSessao = Depends(require_login),
+):
+    return templates.TemplateResponse(
+        request,
+        "novo_log.html",
+        {
+            "user": user,
+            "form_data": _empty_log_form_data(),
+            "error": "",
+            "success": "",
+        },
+    )
+
+
+@app.post("/logs/novo")
+async def criar_log(
+    request: Request,
+    data_aula: str = Form(...),
+    professora: str = Form(...),
+    conteudo: str = Form(...),
+    alunos: str = Form(...),
+    user: UsuarioSessao = Depends(require_login),
+):
+    form_data = {
+        "data_aula": data_aula,
+        "professora": professora,
+        "conteudo": conteudo,
+        "alunos": alunos,
+    }
+
+    if not firebase_app_ready:
+        return templates.TemplateResponse(
+            request,
+            "novo_log.html",
+            {
+                "user": user,
+                "form_data": form_data,
+                "error": "Firebase nao esta disponivel para salvar logs.",
+                "success": "",
+            },
+        )
+
+    if not data_aula.strip() or not professora.strip() or not conteudo.strip():
+        return templates.TemplateResponse(
+            request,
+            "novo_log.html",
+            {
+                "user": user,
+                "form_data": form_data,
+                "error": "Preencha data, professora e conteudo da aula.",
+                "success": "",
+            },
+        )
+
+    alunos_lista = lesson_logs.parse_alunos(alunos)
+    if not alunos_lista:
+        return templates.TemplateResponse(
+            request,
+            "novo_log.html",
+            {
+                "user": user,
+                "form_data": form_data,
+                "error": "Informe pelo menos um aluno.",
+                "success": "",
+            },
+        )
+
+    try:
+        lesson_logs.create_lesson_log(
+            conteudo=conteudo,
+            data_aula=data_aula,
+            professora=professora,
+            alunos=alunos_lista,
+            criado_por_uid=user["uid"],
+            criado_por_email=user["email"],
+        )
+    except Exception:
+        logger.exception("Falha ao salvar log de aula")
+        return templates.TemplateResponse(
+            request,
+            "novo_log.html",
+            {
+                "user": user,
+                "form_data": form_data,
+                "error": "Nao foi possivel salvar o log.",
+                "success": "",
+            },
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "novo_log.html",
+        {
+            "user": user,
+            "form_data": _empty_log_form_data(),
+            "error": "",
+            "success": "Log de aula salvo com sucesso.",
+        },
+    )
+
+
+@app.get("/admin/cadastrar")
+async def cadastrar_usuario(
+    request: Request,
+    user: UsuarioSessao = Depends(require_login),
+):
+    return templates.TemplateResponse(
+        request,
+        "cadastrar_usuario.html",
+        {"user": user, "error": "", "success": ""},
+    )
+
+
+@app.post("/admin/cadastrar")
+async def admin_cadastrar_post(
+    request: Request,
+    email: str = Form(...),
+    senha: str = Form(...),
+    user: UsuarioSessao = Depends(require_login),
+):
+    try:
+        created = firebase_auth_sdk.create_user(email=email, password=senha)
+    except Exception:
+        return templates.TemplateResponse(
+            request,
+            "cadastrar_usuario.html",
+            {"user": user, "error": "Nao foi possivel criar o usuario.", "success": ""},
+        )
+    return templates.TemplateResponse(
+        request,
+        "cadastrar_usuario.html",
+        {"user": user, "error": "", "success": f"Usuario criado: {created.uid}"},
     )
 
 

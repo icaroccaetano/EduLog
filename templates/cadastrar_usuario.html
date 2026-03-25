@@ -1,61 +1,49 @@
 {% extends "base.html" %}
 
-{% block title %}Cadastrar Usuário | EduLog{% endblock %}
+{% block title %}Cadastrar Usuario | EduLog{% endblock %}
 
 {% block content %}
 <section class="mb-4">
-  <h1 class="h3 fw-semibold mb-1">Cadastrar usuário</h1>
+  <h1 class="h3 fw-semibold mb-1">Cadastrar usuario</h1>
   <p class="text-body-secondary mb-0">Organize novos acessos ao sistema de controle de aulas.</p>
 </section>
 
 <section class="row g-3">
   <div class="col-12 col-lg-7">
     <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h2 class="h5 mb-3">Próxima etapa</h2>
-        <p class="text-body-secondary mb-3">A estrutura visual para cadastro já está pronta. Quando a rota de envio estiver disponível, os campos podem ser conectados diretamente.</p>
-        <div class="alert alert-info mb-0" role="alert">
-          Tela preparada para receber o formulário de cadastro.
-        </div>
+      <div class="card-body p-4">
+        {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+        <div class="alert alert-success" role="status">{{ success }}</div>
+        {% endif %}
+
+        <form method="post" action="/admin/cadastrar" class="vstack gap-3">
+          <div>
+            <label for="email" class="form-label">E-mail</label>
+            <input id="email" class="form-control" type="email" name="email" required placeholder="usuario@escola.com">
+          </div>
+          <div>
+            <label for="senha" class="form-label">Senha</label>
+            <input id="senha" class="form-control" type="password" name="senha" minlength="6" required placeholder="Minimo de 6 caracteres">
+          </div>
+          <button type="submit" class="btn btn-primary align-self-start">Cadastrar usuario</button>
+        </form>
       </div>
     </div>
   </div>
   <div class="col-12 col-lg-5">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
-        <h2 class="h5 mb-3">Boas práticas</h2>
+        <h2 class="h5 mb-3">Boas praticas</h2>
         <ul class="list-group list-group-flush">
-          <li class="list-group-item px-0">Use e-mail institucional para cada usuário.</li>
-          <li class="list-group-item px-0">Defina permissões conforme o papel na escola.</li>
-          <li class="list-group-item px-0">Revise os acessos ao início de cada bimestre.</li>
+          <li class="list-group-item px-0">Use e-mail institucional para cada usuario.</li>
+          <li class="list-group-item px-0">Defina permissoes conforme o papel na escola.</li>
+          <li class="list-group-item px-0">Revise os acessos no inicio de cada bimestre.</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 {% endblock %}
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Cadastrar Usuário</title>
-</head>
-<body>
-  <h1>Cadastrar Usuário</h1>
-  {% if error %}
-  <p role="alert">{{ error }}</p>
-  {% endif %}
-  {% if success %}
-  <p role="status">{{ success }}</p>
-  {% endif %}
-  <form method="post" action="/admin/cadastrar">
-    <label>E-mail <input type="email" name="email" required></label>
-    <label>Senha <input type="password" name="senha" minlength="6" required></label>
-    <button type="submit">Cadastrar</button>
-  </form>
-  <nav>
-    <a href="/dashboard">Dashboard</a> |
-    <a href="/logout">Sair</a>
-  </nav>
-</body>
-</html>

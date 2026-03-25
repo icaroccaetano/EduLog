@@ -48,14 +48,21 @@
           Abra o pop-up para registrar uma atividade e vincular um aluno.
           Se o aluno nao existir, cadastre no mesmo formulario.
         </p>
-        <button
-          type="button"
-          class="btn btn-primary btn-registro"
-          data-bs-toggle="modal"
-          data-bs-target="#modalRegistroAtividade"
-        >
-          Registrar atividade
-        </button>
+        <div class="d-flex gap-2 flex-wrap mb-3">
+          <button
+            type="button"
+            class="btn btn-primary btn-registro"
+            data-bs-toggle="modal"
+            data-bs-target="#modalRegistroAtividade"
+          >
+            Registrar atividade
+          </button>
+          <a href="/logs/novo" class="btn btn-outline-primary">Novo log</a>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="/logs" class="btn btn-outline-secondary">Ver logs</a>
+          <a href="/admin/cadastrar" class="btn btn-outline-secondary">Cadastrar usuario</a>
+        </div>
       </div>
     </div>
   </div>

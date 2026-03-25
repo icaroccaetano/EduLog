@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Log de Aula | EduLog{% endblock %}
+
+{% block content %}
+<section class="mb-4">
+  <h1 class="h3 fw-semibold mb-1">Novo log de aula</h1>
+  <p class="text-body-secondary mb-0">Registre o conteudo ministrado, a data, a professora e os alunos envolvidos.</p>
+</section>
+
+<section class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+        <div class="alert alert-success" role="status">{{ success }}</div>
+        {% endif %}
+
+        <form method="post" action="/logs/novo" class="vstack gap-3">
+          <div>
+            <label for="data_aula" class="form-label">Data da aula</label>
+            <input
+              id="data_aula"
+              class="form-control"
+              type="date"
+              name="data_aula"
+              value="{{ form_data.data_aula if form_data else '' }}"
+              required
+            >
+          </div>
+
+          <div>
+            <label for="professora" class="form-label">Professora</label>
+            <input
+              id="professora"
+              class="form-control"
+              type="text"
+              name="professora"
+              value="{{ form_data.professora if form_data else '' }}"
+              placeholder="Nome da professora"
+              required
+            >
+          </div>
+
+          <div>
+            <label for="conteudo" class="form-label">Conteudo ministrado</label>
+            <textarea
+              id="conteudo"
+              class="form-control"
+              name="conteudo"
+              rows="5"
+              placeholder="Descreva o que foi trabalhado na aula"
+              required
+            >{{ form_data.conteudo if form_data else '' }}</textarea>
+          </div>
+
+          <div>
+            <label for="alunos" class="form-label">Alunos</label>
+            <textarea
+              id="alunos"
+              class="form-control"
+              name="alunos"
+              rows="4"
+              placeholder="Um por linha ou separados por virgula"
+              required
+            >{{ form_data.alunos if form_data else '' }}</textarea>
+            <div class="form-text">Voce pode digitar um nome por linha ou varios separados por virgula.</div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-primary">Salvar log</button>
+            <a href="/logs" class="btn btn-outline-secondary">Ver listagem</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Como estamos estruturando</h2>
+        <p class="text-body-secondary">Cada registro vira um documento no Firestore com os dados da aula e metadados de quem cadastrou.</p>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item px-0">Campo data_aula para filtro rapido por dia.</li>
+          <li class="list-group-item px-0">Campo professora para localizar registros por docente.</li>
+          <li class="list-group-item px-0">Campo alunos como lista para consultas simples.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
