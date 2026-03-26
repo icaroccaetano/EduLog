@@ -100,9 +100,13 @@
                     </tr>
                     <tr>
                       <th scope="row">Status</th>
-                      <td>
-                        {% if atividade.eh_hoje %}
+                    <td>
+                        {% if atividade.concluida %}
+                        <span class="badge text-bg-success">Concluida</span>
+                        {% elif atividade.eh_hoje %}
                         <span class="badge text-bg-danger">Hoje</span>
+                        {% elif atividade.dias_para_atividade is not none and atividade.dias_para_atividade < 0 %}
+                        <span class="badge text-bg-secondary">Atrasada</span>
                         {% elif atividade.dias_para_atividade is not none %}
                         <span class="badge text-bg-light border text-dark">Em {{ atividade.dias_para_atividade }} dia(s)</span>
                         {% else %}
@@ -117,7 +121,7 @@
                   </tbody>
                 </table>
 
-                {% if atividade.eh_hoje %}
+                {% if atividade.eh_hoje and not atividade.concluida %}
                 <div class="bloco-prioridade-hoje mt-3">
                   <div class="linha-prioridade"></div>
                   <div>
@@ -139,6 +143,7 @@
                     data-atividade-aluno-id="{{ atividade.aluno_id }}"
                     data-atividade-data="{{ atividade.data_realizacao }}"
                     data-atividade-horario="{{ atividade.horario_realizacao[:5] }}"
+                    data-atividade-concluida="{{ '1' if atividade.concluida else '0' }}"
                   >
                     Editar
                   </button>
@@ -181,12 +186,17 @@
           <div class="row g-3">
             <div class="col-12 col-md-6">
               <label for="data_realizacao" class="form-label">Data da atividade</label>
-              <input id="data_realizacao" class="form-control" type="date" name="data_realizacao" required min="{{ data_atual }}">
+              <input id="data_realizacao" class="form-control" type="date" name="data_realizacao" required>
             </div>
             <div class="col-12 col-md-6">
               <label for="horario_realizacao" class="form-label">Horario da atividade</label>
               <input id="horario_realizacao" class="form-control" type="time" name="horario_realizacao" required>
             </div>
+          </div>
+
+          <div class="form-check">
+            <input id="concluida" class="form-check-input" type="checkbox" name="concluida" value="1">
+            <label for="concluida" class="form-check-label">Marcar como tarefa concluida</label>
           </div>
 
           <div>
@@ -262,12 +272,17 @@
           <div class="row g-3">
             <div class="col-12 col-md-6">
               <label for="editar_data_realizacao" class="form-label">Data da atividade</label>
-              <input id="editar_data_realizacao" class="form-control" type="date" name="data_realizacao" required min="{{ data_atual }}">
+              <input id="editar_data_realizacao" class="form-control" type="date" name="data_realizacao" required>
             </div>
             <div class="col-12 col-md-6">
               <label for="editar_horario_realizacao" class="form-label">Horario da atividade</label>
               <input id="editar_horario_realizacao" class="form-control" type="time" name="horario_realizacao" required>
             </div>
+          </div>
+
+          <div class="form-check">
+            <input id="editar_concluida" class="form-check-input" type="checkbox" name="concluida" value="1">
+            <label for="editar_concluida" class="form-check-label">Tarefa concluida</label>
           </div>
 
           <div>
@@ -309,46 +324,24 @@
     const blocoCadastro = document.getElementById("cadastroNovoAluno");
     const campoNome = document.getElementById("novo_aluno_nome");
     const campoData = document.getElementById("novo_aluno_data_nascimento");
-    const campoDataAtividade = document.getElementById("data_realizacao");
-    const campoHorarioAtividade = document.getElementById("horario_realizacao");
     const campoEditarId = document.getElementById("editar_atividade_id");
     const campoEditarTitulo = document.getElementById("editar_titulo");
     const campoEditarDescricao = document.getElementById("editar_descricao");
     const campoEditarAluno = document.getElementById("editar_aluno_id");
     const campoEditarData = document.getElementById("editar_data_realizacao");
     const campoEditarHorario = document.getElementById("editar_horario_realizacao");
+    const campoEditarConcluida = document.getElementById("editar_concluida");
     const modalEditar = document.getElementById("modalEditarAtividade");
 
     const preencherCamposEdicao = (botao) => {
-      if (!botao || !campoEditarId || !campoEditarTitulo || !campoEditarDescricao || !campoEditarAluno || !campoEditarData || !campoEditarHorario) return;
+      if (!botao || !campoEditarId || !campoEditarTitulo || !campoEditarDescricao || !campoEditarAluno || !campoEditarData || !campoEditarHorario || !campoEditarConcluida) return;
       campoEditarId.value = botao.dataset.atividadeId || "";
       campoEditarTitulo.value = botao.dataset.atividadeTitulo || "";
       campoEditarDescricao.value = botao.dataset.atividadeDescricao || "";
       campoEditarAluno.value = botao.dataset.atividadeAlunoId || "";
       campoEditarData.value = botao.dataset.atividadeData || "";
       campoEditarHorario.value = botao.dataset.atividadeHorario || "";
-      atualizarLimiteHorarioEdicao();
-    };
-
-    const atualizarLimiteHorario = () => {
-      if (!campoDataAtividade || !campoHorarioAtividade) return;
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, "0");
-      const dia = String(agora.getDate()).padStart(2, "0");
-      const hoje = `${ano}-${mes}-${dia}`;
-      const hora = String(agora.getHours()).padStart(2, "0");
-      const minuto = String(agora.getMinutes()).padStart(2, "0");
-      const horarioAtual = `${hora}:${minuto}`;
-
-      if (campoDataAtividade.value === hoje) {
-        campoHorarioAtividade.min = horarioAtual;
-        if (campoHorarioAtividade.value && campoHorarioAtividade.value < horarioAtual) {
-          campoHorarioAtividade.value = horarioAtual;
-        }
-      } else {
-        campoHorarioAtividade.removeAttribute("min");
-      }
+      campoEditarConcluida.checked = (botao.dataset.atividadeConcluida || "0") === "1";
     };
 
     if (seletorAluno && cardCadastro && botaoCadastro && blocoCadastro && window.bootstrap) {
@@ -369,29 +362,6 @@
       atualizarEstadoCadastro();
     }
 
-    if (campoDataAtividade) {
-      campoDataAtividade.addEventListener("change", atualizarLimiteHorario);
-      atualizarLimiteHorario();
-    }
-
-    const atualizarLimiteHorarioEdicao = () => {
-      if (!campoEditarData || !campoEditarHorario) return;
-      const agora = new Date();
-      const ano = agora.getFullYear();
-      const mes = String(agora.getMonth() + 1).padStart(2, "0");
-      const dia = String(agora.getDate()).padStart(2, "0");
-      const hoje = `${ano}-${mes}-${dia}`;
-      const hora = String(agora.getHours()).padStart(2, "0");
-      const minuto = String(agora.getMinutes()).padStart(2, "0");
-      const horarioAtual = `${hora}:${minuto}`;
-
-      if (campoEditarData.value === hoje) {
-        campoEditarHorario.min = horarioAtual;
-      } else {
-        campoEditarHorario.removeAttribute("min");
-      }
-    };
-
     if (modalEditar) {
       modalEditar.addEventListener("show.bs.modal", (evento) => {
         preencherCamposEdicao(evento.relatedTarget);
@@ -403,10 +373,6 @@
       if (!botao) return;
       preencherCamposEdicao(botao);
     });
-
-    if (campoEditarData) {
-      campoEditarData.addEventListener("change", atualizarLimiteHorarioEdicao);
-    }
 
     limparMensagensDaUrl();
   })();
