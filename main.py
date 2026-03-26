@@ -41,6 +41,7 @@ class Atividade(TypedDict):
     aluno_nome: str
     data_realizacao: str
     horario_realizacao: str
+    concluida: bool
 
 
 class DadosProfessora(TypedDict):
@@ -150,6 +151,7 @@ def _gerar_atividades_exibicao(atividades: list[Atividade]) -> list[dict]:
             cor_atual = CORES_BADGE_ALUNO[indice_cor % len(CORES_BADGE_ALUNO)]
 
         data_realizacao = atividade.get("data_realizacao", "")
+        atividade_concluida = bool(atividade.get("concluida", False))
         data_formatada = data_realizacao
         data_obj: date | None = None
         try:
@@ -172,6 +174,7 @@ def _gerar_atividades_exibicao(atividades: list[Atividade]) -> list[dict]:
         atividades_processadas.append(
             {
                 **atividade,
+                "concluida": atividade_concluida,
                 "eh_hoje": data_obj == data_hoje if data_obj else False,
                 "eh_amanha": data_obj == data_amanha if data_obj else False,
                 "badge_cor": cor_atual,
@@ -186,6 +189,7 @@ def _gerar_atividades_exibicao(atividades: list[Atividade]) -> list[dict]:
     atividades_exibicao = sorted(
         atividades_processadas,
         key=lambda item: (
+            1 if item["concluida"] else 0,
             0 if item["eh_hoje"] else 1,
             0 if item["eh_amanha"] else 1,
             item["ordem_data_hora"],
@@ -267,10 +271,11 @@ def _validar_data_horario_atividade(data_realizacao: str, horario_realizacao: st
     except ValueError:
         return "Horario invalido."
 
-    momento_atividade = datetime.combine(data_convertida, horario_convertido)
-    if momento_atividade < datetime.now():
-        return "A data e horario da atividade devem ser maiores ou iguais ao momento atual."
     return None
+
+
+def _valor_para_booleano(valor: str) -> bool:
+    return valor.strip().lower() in {"1", "true", "on", "sim", "yes"}
 
 
 @app.get("/")
@@ -325,7 +330,9 @@ async def dashboard(
 ):
     dados_professora = _obter_dados_professora(user["uid"])
     atividades_exibicao = _gerar_atividades_exibicao(dados_professora["atividades"])
-    quantidade_hoje = sum(1 for atividade in atividades_exibicao if atividade["eh_hoje"])
+    quantidade_hoje = sum(
+        1 for atividade in atividades_exibicao if atividade["eh_hoje"] and not atividade["concluida"]
+    )
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -349,6 +356,7 @@ async def dashboard_registrar_atividade(
     novo_aluno_data_nascimento: str = Form(""),
     data_realizacao: str = Form(...),
     horario_realizacao: str = Form(...),
+    concluida: str = Form(""),
     descricao: str = Form(""),
     user: UsuarioSessao = Depends(require_login),
 ):
@@ -383,6 +391,7 @@ async def dashboard_registrar_atividade(
             "aluno_nome": aluno["nome"],
             "data_realizacao": data_realizacao.strip(),
             "horario_realizacao": horario_realizacao.strip(),
+            "concluida": _valor_para_booleano(concluida),
         }
     )
     return _redirect_dashboard("Atividade registrada com sucesso.")
@@ -395,6 +404,7 @@ async def dashboard_editar_atividade(
     aluno_id: str = Form(...),
     data_realizacao: str = Form(...),
     horario_realizacao: str = Form(...),
+    concluida: str = Form(""),
     descricao: str = Form(""),
     user: UsuarioSessao = Depends(require_login),
 ):
@@ -425,6 +435,7 @@ async def dashboard_editar_atividade(
     atividade["aluno_nome"] = aluno["nome"]
     atividade["data_realizacao"] = data_realizacao.strip()
     atividade["horario_realizacao"] = horario_realizacao.strip()
+    atividade["concluida"] = _valor_para_booleano(concluida)
     return _redirect_dashboard("Atividade editada com sucesso.")
 
 
