@@ -243,3 +243,10 @@ body {
   padding: 1rem;
   background: #fafcff;
 }
+
+.historico-item {
+  border: 1px solid #e7edf4;
+  border-radius: 0.8rem;
+  padding: 0.95rem 1rem;
+  background: linear-gradient(180deg, #fcfdff 0%, #f7faff 100%);
+}

@@ -57,6 +57,7 @@ def save_activity(user_uid: str, activity: dict[str, str]) -> None:
             "aluno_nome": activity["aluno_nome"],
             "data_realizacao": activity["data_realizacao"],
             "horario_realizacao": activity["horario_realizacao"],
+            "concluida": bool(activity.get("concluida", False)),
             "criado_em": firestore.SERVER_TIMESTAMP,
             "atualizado_em": firestore.SERVER_TIMESTAMP,
         },
@@ -76,6 +77,7 @@ def update_activity(user_uid: str, activity: dict[str, str]) -> None:
             "aluno_nome": activity["aluno_nome"],
             "data_realizacao": activity["data_realizacao"],
             "horario_realizacao": activity["horario_realizacao"],
+            "concluida": bool(activity.get("concluida", False)),
             "atualizado_em": firestore.SERVER_TIMESTAMP,
         },
         merge=True,
@@ -101,4 +103,5 @@ def _serialize_atividade(doc: Any) -> dict[str, str]:
         "aluno_nome": str(data.get("aluno_nome", "")),
         "data_realizacao": str(data.get("data_realizacao", "")),
         "horario_realizacao": str(data.get("horario_realizacao", "")),
+        "concluida": bool(data.get("concluida", False)),
     }
