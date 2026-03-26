@@ -2,5 +2,8 @@ venv/
 __pycache__/
 *.py[cod]
 .python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .env
 firebase_key.json

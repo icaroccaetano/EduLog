@@ -25,7 +25,6 @@ def _mensagem_erro_firebase(data: dict[str, Any]) -> str:
 
 
 async def sign_in_with_email_password(email: str, password: str) -> str:
-    """Chama a REST API do Firebase Auth e devolve o idToken JWT."""
     api_key = os.environ.get("FIREBASE_WEB_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("FIREBASE_WEB_API_KEY nao configurada")
