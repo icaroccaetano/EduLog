@@ -38,9 +38,9 @@ async def dashboard(
             dashboard_error = "Nao foi possivel carregar os dados do dashboard."
 
     filters = dashboard_service.ActivityFilters(
-        aluno=aluno,
-        data_de=data_de,
-        data_ate=data_ate,
+        aluno=aluno_filtro,
+        data_de=periodo_inicio,
+        data_ate=periodo_fim,
     )
     activities = dashboard_service.build_activity_view_model(professor_data["atividades"])
     activities, filter_error = dashboard_service.apply_activity_filters(
@@ -73,7 +73,7 @@ async def dashboard(
         {
             "user": user,
             "alunos": professor_data["alunos"],
-            "atividades": filtered_activities,
+            "atividades": activities,
             "total_atividades": len(activities),
             "quantidade_atividades_hoje": today_count,
             "erro": dashboard_error,
@@ -95,7 +95,6 @@ async def dashboard_registrar_atividade(
     horario_realizacao: str = Form(...),
     concluida: str = Form(""),
     descricao: str = Form(""),
-    concluida: str | None = Form(default=None),
     redirect_aluno: str = Form(default=""),
     redirect_data_de: str = Form(default=""),
     redirect_data_ate: str = Form(default=""),
@@ -175,7 +174,6 @@ async def dashboard_editar_atividade(
     horario_realizacao: str = Form(...),
     concluida: str = Form(""),
     descricao: str = Form(""),
-    concluida: str | None = Form(default=None),
     redirect_aluno: str = Form(default=""),
     redirect_data_de: str = Form(default=""),
     redirect_data_ate: str = Form(default=""),
