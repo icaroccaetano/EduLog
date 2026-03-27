@@ -74,7 +74,7 @@
               class="form-control"
               type="text"
               name="aluno"
-              value="{{ filters.aluno }}"
+              value="{{ filtros.aluno_filtro }}"
               placeholder="Digite o nome do aluno"
             >
           </div>
@@ -82,11 +82,11 @@
           <div class="row g-3">
             <div class="col-12 col-sm-6">
               <label for="data_de" class="form-label">De</label>
-              <input id="data_de" class="form-control" type="date" name="data_de" value="{{ filters.data_de }}">
+              <input id="data_de" class="form-control" type="date" name="data_de" value="{{ filtros.data_de }}">
             </div>
             <div class="col-12 col-sm-6">
               <label for="data_ate" class="form-label">Ate</label>
-              <input id="data_ate" class="form-control" type="date" name="data_ate" value="{{ filters.data_ate }}">
+              <input id="data_ate" class="form-control" type="date" name="data_ate" value="{{ filtros.data_ate }}">
             </div>
           </div>
 
@@ -241,7 +241,7 @@
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
           <div>
             <h2 class="h5 mb-1">Historico completo do aluno</h2>
-            <p class="text-body-secondary mb-0">Lista cronologica decrescente das sessoes encontradas para "{{ filters.aluno }}".</p>
+            <p class="text-body-secondary mb-0">Lista cronologica decrescente das sessoes encontradas para "{{ filtros.aluno }}".</p>
           </div>
           <span class="badge text-bg-light border">{{ historico_aluno|length }} registro(s)</span>
         </div>
@@ -273,9 +273,9 @@
       </div>
       <div class="modal-body pt-2">
         <form method="post" action="/dashboard/registro" class="vstack gap-3">
-          <input type="hidden" name="redirect_aluno" value="{{ filters.aluno }}">
-          <input type="hidden" name="redirect_data_de" value="{{ filters.data_de }}">
-          <input type="hidden" name="redirect_data_ate" value="{{ filters.data_ate }}">
+          <input type="hidden" name="redirect_aluno" value="{{ filtros.aluno }}">
+          <input type="hidden" name="redirect_data_de" value="{{ filtros.data_de }}">
+          <input type="hidden" name="redirect_data_ate" value="{{ filtros.data_ate }}">
 
           <div>
             <label for="titulo" class="form-label">Conteudo ministrado</label>
@@ -362,9 +362,9 @@
       <div class="modal-body pt-2">
         <form method="post" action="/dashboard/atividade/editar" class="vstack gap-3">
           <input type="hidden" id="editar_atividade_id" name="atividade_id">
-          <input type="hidden" name="redirect_aluno" value="{{ filters.aluno }}">
-          <input type="hidden" name="redirect_data_de" value="{{ filters.data_de }}">
-          <input type="hidden" name="redirect_data_ate" value="{{ filters.data_ate }}">
+          <input type="hidden" name="redirect_aluno" value="{{ filtros.aluno }}">
+          <input type="hidden" name="redirect_data_de" value="{{ filtros.data_de }}">
+          <input type="hidden" name="redirect_data_ate" value="{{ filtros.data_ate }}">
 
           <div>
             <label for="editar_titulo" class="form-label">Conteudo ministrado</label>
