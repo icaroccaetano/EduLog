@@ -21,6 +21,7 @@ class Atividade(TypedDict):
     aluno_nome: str
     data_realizacao: str
     horario_realizacao: str
+    concluida: bool
 
 
 class DadosProfessora(TypedDict):

@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 
 from app.core import firebase_app_ready, logger, templates
 from app.dependencies import require_login
@@ -13,6 +13,9 @@ router = APIRouter()
 @router.get("/dashboard")
 async def dashboard(
     request: Request,
+    aluno: str = Query(default=""),
+    data_de: str = Query(default=""),
+    data_ate: str = Query(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
     professor_data = {"alunos": [], "atividades": []}
@@ -32,19 +35,29 @@ async def dashboard(
         if not dashboard_error:
             dashboard_error = "Nao foi possivel carregar os dados do dashboard."
 
+    filters = dashboard_service.ActivityFilters(
+        aluno=aluno,
+        data_de=data_de,
+        data_ate=data_ate,
+    )
     activities = dashboard_service.build_activity_view_model(professor_data["atividades"])
-    today_count = sum(1 for activity in activities if activity["eh_hoje"])
+    filtered_activities = dashboard_service.filter_activities(activities, filters)
+    student_history = dashboard_service.build_student_history(activities, filters.aluno)
+    today_count = sum(1 for activity in activities if activity["eh_hoje"] and activity["pendente"])
     return templates.TemplateResponse(
         request,
         "dashboard.html",
         {
             "user": user,
             "alunos": professor_data["alunos"],
-            "atividades": activities,
+            "atividades": filtered_activities,
+            "total_atividades": len(activities),
             "quantidade_atividades_hoje": today_count,
             "erro": dashboard_error,
             "sucesso": request.query_params.get("sucesso", ""),
             "data_atual": date.today().isoformat(),
+            "filters": filters,
+            "historico_aluno": student_history,
         },
     )
 
@@ -58,12 +71,23 @@ async def dashboard_registrar_atividade(
     data_realizacao: str = Form(...),
     horario_realizacao: str = Form(...),
     descricao: str = Form(""),
+    concluida: str | None = Form(default=None),
+    redirect_aluno: str = Form(default=""),
+    redirect_data_de: str = Form(default=""),
+    redirect_data_ate: str = Form(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
+    filters = dashboard_service.ActivityFilters(
+        aluno=redirect_aluno,
+        data_de=redirect_data_de,
+        data_ate=redirect_data_ate,
+    )
+
     if not firebase_app_ready:
         return dashboard_service.redirect_dashboard(
             "Firebase nao esta disponivel para salvar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
     try:
@@ -77,6 +101,7 @@ async def dashboard_registrar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel carregar os dados da professora.",
             message_type="erro",
+            filters=filters,
         )
 
     existing_student_ids = {item["id"] for item in professor_data["alunos"]}
@@ -89,9 +114,10 @@ async def dashboard_registrar_atividade(
         activity_date=data_realizacao,
         activity_time=horario_realizacao,
         description=descricao,
+        completed=concluida == "1",
     )
     if error:
-        return dashboard_service.redirect_dashboard(error, message_type="erro")
+        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
 
     try:
         if student and student["id"] not in existing_student_ids:
@@ -103,9 +129,13 @@ async def dashboard_registrar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel salvar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
-    return dashboard_service.redirect_dashboard("Atividade registrada com sucesso.")
+    return dashboard_service.redirect_dashboard(
+        "Atividade registrada com sucesso.",
+        filters=filters,
+    )
 
 
 @router.post("/dashboard/atividade/editar")
@@ -116,12 +146,23 @@ async def dashboard_editar_atividade(
     data_realizacao: str = Form(...),
     horario_realizacao: str = Form(...),
     descricao: str = Form(""),
+    concluida: str | None = Form(default=None),
+    redirect_aluno: str = Form(default=""),
+    redirect_data_de: str = Form(default=""),
+    redirect_data_ate: str = Form(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
+    filters = dashboard_service.ActivityFilters(
+        aluno=redirect_aluno,
+        data_de=redirect_data_de,
+        data_ate=redirect_data_ate,
+    )
+
     if not firebase_app_ready:
         return dashboard_service.redirect_dashboard(
             "Firebase nao esta disponivel para editar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
     try:
@@ -135,6 +176,7 @@ async def dashboard_editar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel carregar os dados da professora.",
             message_type="erro",
+            filters=filters,
         )
 
     activity, error = dashboard_service.update_activity(
@@ -145,9 +187,10 @@ async def dashboard_editar_atividade(
         activity_date=data_realizacao,
         activity_time=horario_realizacao,
         description=descricao,
+        completed=concluida == "1",
     )
     if error:
-        return dashboard_service.redirect_dashboard(error, message_type="erro")
+        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
 
     try:
         if activity:
@@ -157,6 +200,10 @@ async def dashboard_editar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel atualizar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
-    return dashboard_service.redirect_dashboard("Atividade editada com sucesso.")
+    return dashboard_service.redirect_dashboard(
+        "Atividade editada com sucesso.",
+        filters=filters,
+    )

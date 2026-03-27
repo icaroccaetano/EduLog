@@ -16,8 +16,12 @@
         <strong>{{ alunos|length }}</strong>
       </div>
       <div class="metrica-item">
-        <span class="metrica-rotulo">Atividades</span>
+        <span class="metrica-rotulo">Logs visiveis</span>
         <strong>{{ atividades|length }}</strong>
+      </div>
+      <div class="metrica-item">
+        <span class="metrica-rotulo">Total</span>
+        <strong>{{ total_atividades }}</strong>
       </div>
     </div>
   </div>
@@ -43,9 +47,9 @@
   <div class="col-12 col-xl-4">
     <div class="card border-0 shadow-sm painel-registros">
       <div class="card-body">
-        <h2 class="h5 mb-2">Novo registro</h2>
+        <h2 class="h5 mb-2">Novo registro de aula</h2>
         <p class="text-body-secondary mb-4">
-          Abra o pop-up para registrar uma atividade e vincular um aluno.
+          Abra o pop-up para registrar uma aula e vincular um aluno.
           Se o aluno nao existir, cadastre no mesmo formulario.
         </p>
         <button
@@ -54,8 +58,43 @@
           data-bs-toggle="modal"
           data-bs-target="#modalRegistroAtividade"
         >
-          Registrar atividade
+          Registrar log
         </button>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm painel-registros mt-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Filtros</h2>
+        <form method="get" action="/dashboard" class="vstack gap-3">
+          <div>
+            <label for="filtro_aluno" class="form-label">Aluno</label>
+            <input
+              id="filtro_aluno"
+              class="form-control"
+              type="text"
+              name="aluno"
+              value="{{ filters.aluno }}"
+              placeholder="Digite o nome do aluno"
+            >
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-sm-6">
+              <label for="data_de" class="form-label">De</label>
+              <input id="data_de" class="form-control" type="date" name="data_de" value="{{ filters.data_de }}">
+            </div>
+            <div class="col-12 col-sm-6">
+              <label for="data_ate" class="form-label">Ate</label>
+              <input id="data_ate" class="form-control" type="date" name="data_ate" value="{{ filters.data_ate }}">
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-outline-primary">Aplicar filtros</button>
+            <a href="/dashboard" class="btn btn-outline-secondary">Limpar</a>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -64,7 +103,7 @@
     <div class="card border-0 shadow-sm painel-atividades">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-          <h2 class="h5 mb-0">Atividades registradas</h2>
+          <h2 class="h5 mb-0">Logs de aula registrados</h2>
         </div>
 
         {% if atividades %}
@@ -74,8 +113,10 @@
             <article class="card card-atividade border-0 h-100 {% if atividade.eh_hoje %}card-atividade-hoje{% elif atividade.eh_amanha %}card-atividade-amanha{% endif %}">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-                  <h3 class="h6 mb-0">Registro de atividade</h3>
-                  {% if atividade.eh_hoje %}
+                  <h3 class="h6 mb-0">Registro de aula</h3>
+                  {% if atividade.concluida %}
+                  <span class="badge text-bg-success">Concluida</span>
+                  {% elif atividade.eh_hoje %}
                   <span class="badge text-bg-danger">Hoje</span>
                   {% elif atividade.eh_amanha %}
                   <span class="badge text-bg-warning">Amanha</span>
@@ -85,7 +126,7 @@
                 <table class="table table-sm table-borderless tabela-atividade mb-0">
                   <tbody>
                     <tr>
-                      <th scope="row">Titulo</th>
+                      <th scope="row">Conteudo</th>
                       <td>{{ atividade.titulo }}</td>
                     </tr>
                     <tr>
@@ -100,22 +141,12 @@
                     </tr>
                     <tr>
                       <th scope="row">Status</th>
-                    <td>
-                        {% if atividade.concluida %}
-                        <span class="badge text-bg-success">Concluida</span>
-                        {% elif atividade.eh_hoje %}
-                        <span class="badge text-bg-danger">Hoje</span>
-                        {% elif atividade.dias_para_atividade is not none and atividade.dias_para_atividade < 0 %}
-                        <span class="badge text-bg-secondary">Atrasada</span>
-                        {% elif atividade.dias_para_atividade is not none %}
-                        <span class="badge text-bg-light border text-dark">Em {{ atividade.dias_para_atividade }} dia(s)</span>
-                        {% else %}
-                        <span class="badge text-bg-light border text-dark">Agendada</span>
-                        {% endif %}
+                      <td>
+                        <span class="badge {{ atividade.status_class }}">{{ atividade.status_label }}</span>
                       </td>
                     </tr>
                     <tr>
-                      <th scope="row">Descricao</th>
+                      <th scope="row">Observacoes</th>
                       <td>{{ atividade.descricao if atividade.descricao else "-" }}</td>
                     </tr>
                   </tbody>
@@ -132,6 +163,12 @@
                 {% endif %}
 
                 <div class="pt-3 d-flex justify-content-end">
+                  <a
+                    href="/dashboard?aluno={{ atividade.aluno_nome | urlencode }}"
+                    class="btn btn-outline-primary btn-sm me-2"
+                  >
+                    Ver historico
+                  </a>
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm botao-editar-atividade"
@@ -145,7 +182,7 @@
                     data-atividade-horario="{{ atividade.horario_realizacao[:5] }}"
                     data-atividade-concluida="{{ '1' if atividade.concluida else '0' }}"
                   >
-                    Editar
+                    Editar log
                   </button>
                 </div>
               </div>
@@ -155,12 +192,39 @@
         </div>
         {% else %}
         <div class="estado-vazio">
-          <p class="text-body-secondary mb-1">Nenhuma atividade registrada ainda.</p>
-          <small class="text-body-secondary">Use o botao "Registrar atividade" para criar o primeiro registro.</small>
+          <p class="text-body-secondary mb-1">Nenhum log encontrado.</p>
+          <small class="text-body-secondary">Ajuste os filtros ou registre o primeiro log de aula.</small>
         </div>
         {% endif %}
       </div>
     </div>
+
+    {% if historico_aluno %}
+    <div class="card border-0 shadow-sm painel-atividades mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+          <div>
+            <h2 class="h5 mb-1">Historico completo do aluno</h2>
+            <p class="text-body-secondary mb-0">Lista cronologica decrescente das sessoes encontradas para "{{ filters.aluno }}".</p>
+          </div>
+          <span class="badge text-bg-light border">{{ historico_aluno|length }} registro(s)</span>
+        </div>
+
+        <div class="vstack gap-3">
+          {% for item in historico_aluno %}
+          <article class="historico-item">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
+              <strong>{{ item.data }} as {{ item.horario }}</strong>
+              <span class="badge text-bg-secondary">{{ item.aluno_nome }}</span>
+            </div>
+            <p class="mb-1"><strong>Conteudo:</strong> {{ item.conteudo }}</p>
+            <p class="mb-0 text-body-secondary"><strong>Observacoes:</strong> {{ item.observacoes }}</p>
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </section>
 
@@ -168,35 +232,39 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-0 pb-0">
-        <h3 class="modal-title h5" id="modalRegistroAtividadeLabel">Registrar atividade</h3>
+        <h3 class="modal-title h5" id="modalRegistroAtividadeLabel">Registrar log de aula</h3>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body pt-2">
         <form method="post" action="/dashboard/registro" class="vstack gap-3">
+          <input type="hidden" name="redirect_aluno" value="{{ filters.aluno }}">
+          <input type="hidden" name="redirect_data_de" value="{{ filters.data_de }}">
+          <input type="hidden" name="redirect_data_ate" value="{{ filters.data_ate }}">
+
           <div>
-            <label for="titulo" class="form-label">Titulo da atividade</label>
+            <label for="titulo" class="form-label">Conteudo ministrado</label>
             <input id="titulo" class="form-control" type="text" name="titulo" required placeholder="Ex.: Leitura do capitulo 3">
           </div>
 
           <div>
-            <label for="descricao" class="form-label">Descricao (opcional)</label>
-            <textarea id="descricao" class="form-control" name="descricao" rows="3" placeholder="Observacoes da atividade"></textarea>
+            <label for="descricao" class="form-label">Observacoes (opcional)</label>
+            <textarea id="descricao" class="form-control" name="descricao" rows="3" placeholder="Observacoes da sessao"></textarea>
           </div>
 
           <div class="row g-3">
             <div class="col-12 col-md-6">
-              <label for="data_realizacao" class="form-label">Data da atividade</label>
+              <label for="data_realizacao" class="form-label">Data da sessao</label>
               <input id="data_realizacao" class="form-control" type="date" name="data_realizacao" required>
             </div>
             <div class="col-12 col-md-6">
-              <label for="horario_realizacao" class="form-label">Horario da atividade</label>
+              <label for="horario_realizacao" class="form-label">Horario da sessao</label>
               <input id="horario_realizacao" class="form-control" type="time" name="horario_realizacao" required>
             </div>
           </div>
 
           <div class="form-check">
             <input id="concluida" class="form-check-input" type="checkbox" name="concluida" value="1">
-            <label for="concluida" class="form-check-label">Marcar como tarefa concluida</label>
+            <label for="concluida" class="form-check-label">Marcar como sessao concluida</label>
           </div>
 
           <div>
@@ -252,37 +320,40 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header border-0 pb-0">
-        <h3 class="modal-title h5" id="modalEditarAtividadeLabel">Editar atividade</h3>
+        <h3 class="modal-title h5" id="modalEditarAtividadeLabel">Editar log de aula</h3>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body pt-2">
         <form method="post" action="/dashboard/atividade/editar" class="vstack gap-3">
           <input type="hidden" id="editar_atividade_id" name="atividade_id">
+          <input type="hidden" name="redirect_aluno" value="{{ filters.aluno }}">
+          <input type="hidden" name="redirect_data_de" value="{{ filters.data_de }}">
+          <input type="hidden" name="redirect_data_ate" value="{{ filters.data_ate }}">
 
           <div>
-            <label for="editar_titulo" class="form-label">Titulo da atividade</label>
+            <label for="editar_titulo" class="form-label">Conteudo ministrado</label>
             <input id="editar_titulo" class="form-control" type="text" name="titulo" required>
           </div>
 
           <div>
-            <label for="editar_descricao" class="form-label">Descricao (opcional)</label>
+            <label for="editar_descricao" class="form-label">Observacoes (opcional)</label>
             <textarea id="editar_descricao" class="form-control" name="descricao" rows="3"></textarea>
           </div>
 
           <div class="row g-3">
             <div class="col-12 col-md-6">
-              <label for="editar_data_realizacao" class="form-label">Data da atividade</label>
+              <label for="editar_data_realizacao" class="form-label">Data da sessao</label>
               <input id="editar_data_realizacao" class="form-control" type="date" name="data_realizacao" required>
             </div>
             <div class="col-12 col-md-6">
-              <label for="editar_horario_realizacao" class="form-label">Horario da atividade</label>
+              <label for="editar_horario_realizacao" class="form-label">Horario da sessao</label>
               <input id="editar_horario_realizacao" class="form-control" type="time" name="horario_realizacao" required>
             </div>
           </div>
 
           <div class="form-check">
             <input id="editar_concluida" class="form-check-input" type="checkbox" name="concluida" value="1">
-            <label for="editar_concluida" class="form-check-label">Tarefa concluida</label>
+            <label for="editar_concluida" class="form-check-label">Marcar como sessao concluida</label>
           </div>
 
           <div>
