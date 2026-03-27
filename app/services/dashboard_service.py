@@ -55,6 +55,7 @@ def build_activity_view_model(activities: list[Atividade]) -> list[dict]:
             current_color = CORES_BADGE_ALUNO[color_index % len(CORES_BADGE_ALUNO)]
 
         activity_date_raw = activity.get("data_realizacao", "")
+        activity_concluded = bool(activity.get("concluida", False))
         formatted_date = activity_date_raw
         activity_date: date | None = None
         try:
@@ -77,6 +78,7 @@ def build_activity_view_model(activities: list[Atividade]) -> list[dict]:
         activities_processed.append(
             {
                 **activity,
+                "concluida": activity_concluded,
                 "eh_hoje": activity_date == today if activity_date else False,
                 "eh_amanha": activity_date == tomorrow if activity_date else False,
                 "badge_cor": current_color,
@@ -91,11 +93,76 @@ def build_activity_view_model(activities: list[Atividade]) -> list[dict]:
     return sorted(
         activities_processed,
         key=lambda item: (
+            1 if item["concluida"] else 0,
             0 if item["eh_hoje"] else 1,
             0 if item["eh_amanha"] else 1,
             item["ordem_data_hora"],
         ),
     )
+
+
+def apply_activity_filters(
+    *,
+    activities: list[dict],
+    period_start: str,
+    period_end: str,
+    specific_date: str,
+    selected_teacher: str,
+    teacher_email: str,
+    student_id: str,
+) -> tuple[list[dict], str | None]:
+    start_clean = period_start.strip()
+    end_clean = period_end.strip()
+    date_clean = specific_date.strip()
+    teacher_clean = selected_teacher.strip()
+    student_clean = student_id.strip()
+
+    parsed_start, start_error = _parse_filter_date(start_clean, "Data inicial do periodo invalida.")
+    if start_error:
+        return activities, start_error
+
+    parsed_end, end_error = _parse_filter_date(end_clean, "Data final do periodo invalida.")
+    if end_error:
+        return activities, end_error
+
+    parsed_specific, specific_error = _parse_filter_date(date_clean, "Data do filtro invalida.")
+    if specific_error:
+        return activities, specific_error
+
+    if parsed_start and parsed_end and parsed_start > parsed_end:
+        return activities, "A data inicial do periodo deve ser menor ou igual a data final."
+
+    filtered = list(activities)
+    indexed_dates = [(item, _activity_date(item)) for item in filtered]
+
+    if teacher_clean and teacher_clean.casefold() != teacher_email.casefold():
+        return [], None
+
+    if student_clean:
+        indexed_dates = [
+            (item, item_date)
+            for item, item_date in indexed_dates
+            if str(item.get("aluno_id", "")).strip() == student_clean
+        ]
+
+    if parsed_specific:
+        indexed_dates = [(item, item_date) for item, item_date in indexed_dates if item_date == parsed_specific]
+
+    if parsed_start:
+        indexed_dates = [
+            (item, item_date)
+            for item, item_date in indexed_dates
+            if item_date is not None and item_date >= parsed_start
+        ]
+
+    if parsed_end:
+        indexed_dates = [
+            (item, item_date)
+            for item, item_date in indexed_dates
+            if item_date is not None and item_date <= parsed_end
+        ]
+
+    return [item for item, _ in indexed_dates], None
 
 
 def find_student_by_id(professor_data: DadosProfessora, student_id: str) -> Aluno | None:
@@ -166,13 +233,10 @@ def validate_activity_datetime(activity_date: str, activity_time: str) -> str | 
         return "Data de realizacao invalida."
 
     try:
-        parsed_time = time.fromisoformat(activity_time_clean)
+        time.fromisoformat(activity_time_clean)
     except ValueError:
         return "Horario invalido."
 
-    activity_moment = datetime.combine(parsed_date, parsed_time)
-    if activity_moment < datetime.now():
-        return "A data e horario da atividade devem ser maiores ou iguais ao momento atual."
     return None
 
 
@@ -186,7 +250,8 @@ def register_activity(
     activity_date: str,
     activity_time: str,
     description: str,
-) -> tuple[dict[str, str] | None, dict[str, str] | None, str | None]:
+    concluded: str,
+) -> tuple[dict[str, str | bool] | None, dict[str, str] | None, str | None]:
     clean_title = clean_text(title, TAMANHO_MAX_TITULO_ATIVIDADE)
     if not clean_title:
         return None, None, "Informe o titulo da atividade."
@@ -214,6 +279,7 @@ def register_activity(
         "aluno_nome": student["nome"],
         "data_realizacao": activity_date.strip(),
         "horario_realizacao": activity_time.strip(),
+        "concluida": parse_boolean(concluded),
     }
     return activity, student, None
 
@@ -227,7 +293,8 @@ def update_activity(
     activity_date: str,
     activity_time: str,
     description: str,
-) -> tuple[dict[str, str] | None, str | None]:
+    concluded: str,
+) -> tuple[dict[str, str | bool] | None, str | None]:
     activity_id_clean = activity_id.strip()
     if not activity_id_clean:
         return None, "Nao foi possivel identificar a atividade para edicao."
@@ -254,4 +321,28 @@ def update_activity(
     activity["aluno_nome"] = student["nome"]
     activity["data_realizacao"] = activity_date.strip()
     activity["horario_realizacao"] = activity_time.strip()
+    activity["concluida"] = parse_boolean(concluded)
     return activity, None
+
+
+def _parse_filter_date(value: str, message: str) -> tuple[date | None, str | None]:
+    if not value:
+        return None, None
+    try:
+        return date.fromisoformat(value), None
+    except ValueError:
+        return None, message
+
+
+def _activity_date(activity: dict) -> date | None:
+    raw_value = str(activity.get("data_realizacao", "")).strip()
+    if not raw_value:
+        return None
+    try:
+        return date.fromisoformat(raw_value)
+    except ValueError:
+        return None
+
+
+def parse_boolean(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "on", "sim", "yes"}
