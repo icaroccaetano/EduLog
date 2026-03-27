@@ -37,6 +37,11 @@ async def dashboard(
         if not dashboard_error:
             dashboard_error = "Nao foi possivel carregar os dados do dashboard."
 
+    filters = dashboard_service.ActivityFilters(
+        aluno=aluno,
+        data_de=data_de,
+        data_ate=data_ate,
+    )
     activities = dashboard_service.build_activity_view_model(professor_data["atividades"])
     activities, filter_error = dashboard_service.apply_activity_filters(
         activities=activities,
@@ -68,7 +73,8 @@ async def dashboard(
         {
             "user": user,
             "alunos": professor_data["alunos"],
-            "atividades": activities,
+            "atividades": filtered_activities,
+            "total_atividades": len(activities),
             "quantidade_atividades_hoje": today_count,
             "erro": dashboard_error,
             "sucesso": request.query_params.get("sucesso", ""),
@@ -89,12 +95,23 @@ async def dashboard_registrar_atividade(
     horario_realizacao: str = Form(...),
     concluida: str = Form(""),
     descricao: str = Form(""),
+    concluida: str | None = Form(default=None),
+    redirect_aluno: str = Form(default=""),
+    redirect_data_de: str = Form(default=""),
+    redirect_data_ate: str = Form(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
+    filters = dashboard_service.ActivityFilters(
+        aluno=redirect_aluno,
+        data_de=redirect_data_de,
+        data_ate=redirect_data_ate,
+    )
+
     if not firebase_app_ready:
         return dashboard_service.redirect_dashboard(
             "Firebase nao esta disponivel para salvar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
     selected_student_id = aluno_id.strip()
@@ -112,6 +129,7 @@ async def dashboard_registrar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel carregar os dados do(a) professor(a).",
             message_type="erro",
+            filters=filters,
         )
 
     existing_student_ids = {item["id"] for item in professor_data["alunos"]}
@@ -127,7 +145,7 @@ async def dashboard_registrar_atividade(
         concluded=concluida,
     )
     if error:
-        return dashboard_service.redirect_dashboard(error, message_type="erro")
+        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
 
     try:
         if student and student["id"] not in existing_student_ids:
@@ -139,9 +157,13 @@ async def dashboard_registrar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel salvar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
-    return dashboard_service.redirect_dashboard("Atividade registrada com sucesso.")
+    return dashboard_service.redirect_dashboard(
+        "Atividade registrada com sucesso.",
+        filters=filters,
+    )
 
 
 @router.post("/dashboard/atividade/editar")
@@ -153,12 +175,23 @@ async def dashboard_editar_atividade(
     horario_realizacao: str = Form(...),
     concluida: str = Form(""),
     descricao: str = Form(""),
+    concluida: str | None = Form(default=None),
+    redirect_aluno: str = Form(default=""),
+    redirect_data_de: str = Form(default=""),
+    redirect_data_ate: str = Form(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
+    filters = dashboard_service.ActivityFilters(
+        aluno=redirect_aluno,
+        data_de=redirect_data_de,
+        data_ate=redirect_data_ate,
+    )
+
     if not firebase_app_ready:
         return dashboard_service.redirect_dashboard(
             "Firebase nao esta disponivel para editar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
     selected_student_id = aluno_id.strip()
@@ -176,6 +209,7 @@ async def dashboard_editar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel carregar os dados do(a) professor(a).",
             message_type="erro",
+            filters=filters,
         )
 
     activity, error = dashboard_service.update_activity(
@@ -189,7 +223,7 @@ async def dashboard_editar_atividade(
         concluded=concluida,
     )
     if error:
-        return dashboard_service.redirect_dashboard(error, message_type="erro")
+        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
 
     try:
         if activity:
@@ -199,6 +233,10 @@ async def dashboard_editar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel atualizar a atividade.",
             message_type="erro",
+            filters=filters,
         )
 
-    return dashboard_service.redirect_dashboard("Atividade editada com sucesso.")
+    return dashboard_service.redirect_dashboard(
+        "Atividade editada com sucesso.",
+        filters=filters,
+    )

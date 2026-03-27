@@ -1,4 +1,5 @@
 import secrets
+from dataclasses import dataclass
 from datetime import date, datetime, time
 from urllib.parse import urlencode
 
@@ -14,6 +15,13 @@ from app.models import (
     TAMANHO_MAX_NOME_ALUNO,
     TAMANHO_MAX_TITULO_ATIVIDADE,
 )
+
+
+@dataclass
+class ActivityFilters:
+    aluno: str = ""
+    data_de: str = ""
+    data_ate: str = ""
 
 
 def load_teacher_data(
@@ -33,8 +41,21 @@ def clean_text(value: str, max_length: int) -> str:
     return cleaned[:max_length]
 
 
-def redirect_dashboard(message: str, message_type: str = "sucesso") -> RedirectResponse:
-    query = urlencode({message_type: message})
+def redirect_dashboard(
+    message: str,
+    message_type: str = "sucesso",
+    filters: ActivityFilters | None = None,
+) -> RedirectResponse:
+    query_params = {message_type: message}
+    if filters:
+        if filters.aluno:
+            query_params["aluno"] = filters.aluno
+        if filters.data_de:
+            query_params["data_de"] = filters.data_de
+        if filters.data_ate:
+            query_params["data_ate"] = filters.data_ate
+
+    query = urlencode(query_params)
     return RedirectResponse(url=f"/dashboard?{query}", status_code=303)
 
 
@@ -44,6 +65,7 @@ def build_activity_view_model(activities: list[Atividade]) -> list[dict]:
     color_index = 0
     today = date.today()
     tomorrow = today.fromordinal(today.toordinal() + 1)
+    now = datetime.now()
 
     for activity in activities:
         if "id" not in activity or not activity.get("id"):
@@ -75,6 +97,27 @@ def build_activity_view_model(activities: list[Atividade]) -> list[dict]:
         except ValueError:
             ordering_datetime = datetime.max
 
+        is_completed = bool(activity.get("concluida", False))
+        is_today = activity_date == today if activity_date else False
+        is_tomorrow = activity_date == tomorrow if activity_date else False
+        is_overdue = ordering_datetime < now and not is_completed
+
+        if is_completed:
+            status_label = "Concluida"
+            status_class = "text-bg-success"
+        elif is_today:
+            status_label = "Hoje"
+            status_class = "text-bg-danger"
+        elif is_overdue:
+            status_label = "Atrasada"
+            status_class = "text-bg-secondary"
+        elif days_until_activity is not None:
+            status_label = f"Em {days_until_activity} dia(s)"
+            status_class = "text-bg-light border text-dark"
+        else:
+            status_label = "Agendada"
+            status_class = "text-bg-light border text-dark"
+
         activities_processed.append(
             {
                 **activity,
@@ -85,6 +128,10 @@ def build_activity_view_model(activities: list[Atividade]) -> list[dict]:
                 "data_realizacao_formatada": formatted_date,
                 "dias_para_atividade": days_until_activity,
                 "ordem_data_hora": ordering_datetime,
+                "pendente": not is_completed,
+                "atrasada": is_overdue,
+                "status_label": status_label,
+                "status_class": status_class,
             }
         )
         previous_color = current_color
@@ -346,3 +393,48 @@ def _activity_date(activity: dict) -> date | None:
 
 def parse_boolean(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "on", "sim", "yes"}
+    activity["concluida"] = completed
+    return activity, None
+
+
+def filter_activities(
+    activities: list[dict],
+    filters: ActivityFilters,
+) -> list[dict]:
+    filtered_items = []
+    aluno_filter = filters.aluno.strip().casefold()
+    data_de = filters.data_de.strip()
+    data_ate = filters.data_ate.strip()
+
+    for activity in activities:
+        if aluno_filter and aluno_filter not in activity["aluno_nome"].casefold():
+            continue
+
+        activity_date = activity.get("data_realizacao", "")
+        if data_de and activity_date < data_de:
+            continue
+        if data_ate and activity_date > data_ate:
+            continue
+
+        filtered_items.append(activity)
+
+    return filtered_items
+
+
+def build_student_history(activities: list[dict], aluno_filter: str) -> list[dict]:
+    if not aluno_filter.strip():
+        return []
+
+    aluno_filter_casefold = aluno_filter.strip().casefold()
+    history = [
+        {
+            "data": activity["data_realizacao_formatada"],
+            "conteudo": activity["titulo"],
+            "observacoes": activity["descricao"] or "-",
+            "horario": activity["horario_realizacao"][:5],
+            "aluno_nome": activity["aluno_nome"],
+        }
+        for activity in activities
+        if aluno_filter_casefold in activity["aluno_nome"].casefold()
+    ]
+    return history
