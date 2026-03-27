@@ -13,9 +13,11 @@ router = APIRouter()
 @router.get("/dashboard")
 async def dashboard(
     request: Request,
-    aluno: str = Query(default=""),
-    data_de: str = Query(default=""),
-    data_ate: str = Query(default=""),
+    periodo_inicio: str = Query(""),
+    periodo_fim: str = Query(""),
+    data_filtro: str = Query(""),
+    professor_filtro: str = Query(""),
+    aluno_filtro: str = Query(""),
     user: UsuarioSessao = Depends(require_login),
 ):
     professor_data = {"alunos": [], "atividades": []}
@@ -41,9 +43,30 @@ async def dashboard(
         data_ate=data_ate,
     )
     activities = dashboard_service.build_activity_view_model(professor_data["atividades"])
-    filtered_activities = dashboard_service.filter_activities(activities, filters)
-    student_history = dashboard_service.build_student_history(activities, filters.aluno)
-    today_count = sum(1 for activity in activities if activity["eh_hoje"] and activity["pendente"])
+    activities, filter_error = dashboard_service.apply_activity_filters(
+        activities=activities,
+        period_start=periodo_inicio,
+        period_end=periodo_fim,
+        specific_date=data_filtro,
+        selected_teacher=professor_filtro,
+        teacher_email=user["email"],
+        student_id=aluno_filtro,
+    )
+    if filter_error and not dashboard_error:
+        dashboard_error = filter_error
+
+    today_count = sum(
+        1 for activity in activities if activity["eh_hoje"] and not bool(activity.get("concluida", False))
+    )
+    filtros = {
+        "periodo_inicio": periodo_inicio.strip(),
+        "periodo_fim": periodo_fim.strip(),
+        "data_filtro": data_filtro.strip(),
+        "professor_filtro": professor_filtro.strip(),
+        "aluno_filtro": aluno_filtro.strip(),
+    }
+    professores_disponiveis = [user["email"]]
+
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -56,8 +79,8 @@ async def dashboard(
             "erro": dashboard_error,
             "sucesso": request.query_params.get("sucesso", ""),
             "data_atual": date.today().isoformat(),
-            "filters": filters,
-            "historico_aluno": student_history,
+            "filtros": filtros,
+            "professores_disponiveis": professores_disponiveis,
         },
     )
 
@@ -70,6 +93,7 @@ async def dashboard_registrar_atividade(
     novo_aluno_data_nascimento: str = Form(""),
     data_realizacao: str = Form(...),
     horario_realizacao: str = Form(...),
+    concluida: str = Form(""),
     descricao: str = Form(""),
     concluida: str | None = Form(default=None),
     redirect_aluno: str = Form(default=""),
@@ -90,16 +114,20 @@ async def dashboard_registrar_atividade(
             filters=filters,
         )
 
+    selected_student_id = aluno_id.strip()
+    has_new_student_data = bool(novo_aluno_nome.strip() or novo_aluno_data_nascimento.strip())
+
     try:
-        professor_data = dashboard_service.load_teacher_data(
-            user["uid"],
-            user["email"],
-            firestore_dashboard_service,
-        )
+        if selected_student_id and not has_new_student_data:
+            selected_student = firestore_dashboard_service.load_student_by_id(user["uid"], selected_student_id)
+            students = [selected_student] if selected_student else []
+        else:
+            students = firestore_dashboard_service.load_students(user["uid"])
+        professor_data = {"alunos": students, "atividades": []}
     except Exception:
-        logger.exception("Falha ao carregar dados da professora para registrar atividade")
+        logger.exception("Falha ao carregar dados do(a) professor(a) para registrar atividade")
         return dashboard_service.redirect_dashboard(
-            "Nao foi possivel carregar os dados da professora.",
+            "Nao foi possivel carregar os dados do(a) professor(a).",
             message_type="erro",
             filters=filters,
         )
@@ -114,7 +142,7 @@ async def dashboard_registrar_atividade(
         activity_date=data_realizacao,
         activity_time=horario_realizacao,
         description=descricao,
-        completed=concluida == "1",
+        concluded=concluida,
     )
     if error:
         return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
@@ -145,6 +173,7 @@ async def dashboard_editar_atividade(
     aluno_id: str = Form(...),
     data_realizacao: str = Form(...),
     horario_realizacao: str = Form(...),
+    concluida: str = Form(""),
     descricao: str = Form(""),
     concluida: str | None = Form(default=None),
     redirect_aluno: str = Form(default=""),
@@ -165,16 +194,20 @@ async def dashboard_editar_atividade(
             filters=filters,
         )
 
+    selected_student_id = aluno_id.strip()
+
     try:
-        professor_data = dashboard_service.load_teacher_data(
-            user["uid"],
-            user["email"],
-            firestore_dashboard_service,
-        )
+        selected_student = firestore_dashboard_service.load_student_by_id(user["uid"], selected_student_id)
+        students = [selected_student] if selected_student else []
+        loaded_activity = firestore_dashboard_service.load_activity_by_id(user["uid"], atividade_id.strip())
+        professor_data = {
+            "alunos": students,
+            "atividades": [loaded_activity] if loaded_activity else [],
+        }
     except Exception:
-        logger.exception("Falha ao carregar dados da professora para editar atividade")
+        logger.exception("Falha ao carregar dados do(a) professor(a) para editar atividade")
         return dashboard_service.redirect_dashboard(
-            "Nao foi possivel carregar os dados da professora.",
+            "Nao foi possivel carregar os dados do(a) professor(a).",
             message_type="erro",
             filters=filters,
         )
@@ -187,7 +220,7 @@ async def dashboard_editar_atividade(
         activity_date=data_realizacao,
         activity_time=horario_realizacao,
         description=descricao,
-        completed=concluida == "1",
+        concluded=concluida,
     )
     if error:
         return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
