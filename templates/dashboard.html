@@ -205,6 +205,19 @@
                   >
                     Ver historico
                   </a>
+                  <form method="post" action="/dashboard/atividade/excluir" class="me-2">
+                    <input type="hidden" name="atividade_id" value="{{ atividade.id }}">
+                    <input type="hidden" name="redirect_aluno" value="{{ filtros.aluno_filtro }}">
+                    <input type="hidden" name="redirect_data_de" value="{{ filtros.periodo_inicio }}">
+                    <input type="hidden" name="redirect_data_ate" value="{{ filtros.periodo_fim }}">
+                    <button
+                      type="submit"
+                      class="btn btn-outline-danger btn-sm"
+                      onclick="return confirm('Deseja realmente excluir este log?');"
+                    >
+                      Excluir log
+                    </button>
+                  </form>
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm botao-editar-atividade"
@@ -439,6 +452,7 @@
     const campoEditarHorario = document.getElementById("editar_horario_realizacao");
     const campoEditarConcluida = document.getElementById("editar_concluida");
     const modalEditar = document.getElementById("modalEditarAtividade");
+    const formulariosRegistro = document.querySelectorAll("form[action='/dashboard/registro']");
 
     const preencherCamposEdicao = (botao) => {
       if (!botao || !campoEditarId || !campoEditarTitulo || !campoEditarDescricao || !campoEditarAluno || !campoEditarData || !campoEditarHorario || !campoEditarConcluida) return;
@@ -474,6 +488,20 @@
         preencherCamposEdicao(evento.relatedTarget);
       });
     }
+
+    formulariosRegistro.forEach((formulario) => {
+      formulario.addEventListener("submit", (evento) => {
+        if (formulario.dataset.submitting === "1") {
+          evento.preventDefault();
+          return;
+        }
+        formulario.dataset.submitting = "1";
+        const botoes = formulario.querySelectorAll("button[type='submit']");
+        botoes.forEach((botao) => {
+          botao.disabled = true;
+        });
+      });
+    });
 
     document.addEventListener("click", (evento) => {
       const botao = evento.target.closest(".botao-editar-atividade");

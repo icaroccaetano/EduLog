@@ -1,4 +1,5 @@
 import secrets
+from hashlib import sha256
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from urllib.parse import urlencode
@@ -22,6 +23,9 @@ class ActivityFilters:
     aluno: str = ""
     data_de: str = ""
     data_ate: str = ""
+
+
+REGISTER_DUPLICATE_WINDOW_SECONDS = 8
 
 
 def load_teacher_data(
@@ -372,6 +376,22 @@ def update_activity(
     return activity, None
 
 
+def delete_activity(
+    *,
+    professor_data: DadosProfessora,
+    activity_id: str,
+) -> tuple[Atividade | None, str | None]:
+    activity_id_clean = activity_id.strip()
+    if not activity_id_clean:
+        return None, "Nao foi possivel identificar a atividade para exclusao."
+
+    activity = find_activity_by_id(professor_data, activity_id_clean)
+    if not activity:
+        return None, "Atividade nao encontrada."
+
+    return activity, None
+
+
 def _parse_filter_date(value: str, message: str) -> tuple[date | None, str | None]:
     if not value:
         return None, None
@@ -395,6 +415,32 @@ def parse_boolean(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "on", "sim", "yes"}
     activity["concluida"] = completed
     return activity, None
+
+
+def build_register_submission_fingerprint(
+    *,
+    title: str,
+    student_id: str,
+    new_student_name: str,
+    new_student_birth_date: str,
+    activity_date: str,
+    activity_time: str,
+    description: str,
+    concluded: str,
+) -> str:
+    payload = "|".join(
+        [
+            clean_text(title, TAMANHO_MAX_TITULO_ATIVIDADE).casefold(),
+            student_id.strip(),
+            clean_text(new_student_name, TAMANHO_MAX_NOME_ALUNO).casefold(),
+            new_student_birth_date.strip(),
+            activity_date.strip(),
+            activity_time.strip(),
+            clean_text(description, TAMANHO_MAX_DESCRICAO_ATIVIDADE).casefold(),
+            "1" if parse_boolean(concluded) else "0",
+        ]
+    )
+    return sha256(payload.encode("utf-8")).hexdigest()
 
 
 def filter_activities(

@@ -1,4 +1,5 @@
 from datetime import date
+from time import time
 
 from fastapi import APIRouter, Depends, Form, Query, Request
 
@@ -87,6 +88,7 @@ async def dashboard(
 
 @router.post("/dashboard/registro")
 async def dashboard_registrar_atividade(
+    request: Request,
     titulo: str = Form(...),
     aluno_id: str = Form(""),
     novo_aluno_nome: str = Form(""),
@@ -112,6 +114,40 @@ async def dashboard_registrar_atividade(
             message_type="erro",
             filters=filters,
         )
+
+    submission_key = dashboard_service.build_register_submission_fingerprint(
+        title=titulo,
+        student_id=aluno_id,
+        new_student_name=novo_aluno_nome,
+        new_student_birth_date=novo_aluno_data_nascimento,
+        activity_date=data_realizacao,
+        activity_time=horario_realizacao,
+        description=descricao,
+        concluded=concluida,
+    )
+    current_timestamp = time()
+    submission_state = request.session.get("dashboard_register_submission")
+    if isinstance(submission_state, dict):
+        last_key = str(submission_state.get("key", ""))
+        try:
+            last_timestamp = float(submission_state.get("timestamp", 0))
+        except (TypeError, ValueError):
+            last_timestamp = 0.0
+
+        if (
+            last_key == submission_key
+            and current_timestamp - last_timestamp <= dashboard_service.REGISTER_DUPLICATE_WINDOW_SECONDS
+        ):
+            return dashboard_service.redirect_dashboard(
+                "Registro duplicado detectado. Aguarde alguns segundos antes de tentar novamente.",
+                message_type="erro",
+                filters=filters,
+            )
+
+    request.session["dashboard_register_submission"] = {
+        "key": submission_key,
+        "timestamp": current_timestamp,
+    }
 
     selected_student_id = aluno_id.strip()
     has_new_student_data = bool(novo_aluno_nome.strip() or novo_aluno_data_nascimento.strip())
@@ -236,5 +272,61 @@ async def dashboard_editar_atividade(
 
     return dashboard_service.redirect_dashboard(
         "Atividade editada com sucesso.",
+        filters=filters,
+    )
+
+
+@router.post("/dashboard/atividade/excluir")
+async def dashboard_excluir_atividade(
+    atividade_id: str = Form(""),
+    redirect_aluno: str = Form(default=""),
+    redirect_data_de: str = Form(default=""),
+    redirect_data_ate: str = Form(default=""),
+    user: UsuarioSessao = Depends(require_login),
+):
+    filters = dashboard_service.ActivityFilters(
+        aluno=redirect_aluno,
+        data_de=redirect_data_de,
+        data_ate=redirect_data_ate,
+    )
+
+    if not firebase_app_ready:
+        return dashboard_service.redirect_dashboard(
+            "Firebase nao esta disponivel para excluir a atividade.",
+            message_type="erro",
+            filters=filters,
+        )
+
+    try:
+        loaded_activity = firestore_dashboard_service.load_activity_by_id(user["uid"], atividade_id.strip())
+        professor_data = {"alunos": [], "atividades": [loaded_activity] if loaded_activity else []}
+    except Exception:
+        logger.exception("Falha ao carregar dados do(a) professor(a) para excluir atividade")
+        return dashboard_service.redirect_dashboard(
+            "Nao foi possivel carregar os dados do(a) professor(a).",
+            message_type="erro",
+            filters=filters,
+        )
+
+    activity, error = dashboard_service.delete_activity(
+        professor_data=professor_data,
+        activity_id=atividade_id,
+    )
+    if error:
+        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
+
+    try:
+        if activity:
+            firestore_dashboard_service.delete_activity(user["uid"], activity["id"])
+    except Exception:
+        logger.exception("Falha ao excluir atividade no Firestore")
+        return dashboard_service.redirect_dashboard(
+            "Nao foi possivel excluir a atividade.",
+            message_type="erro",
+            filters=filters,
+        )
+
+    return dashboard_service.redirect_dashboard(
+        "Atividade excluida com sucesso.",
         filters=filters,
     )
