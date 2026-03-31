@@ -63,40 +63,6 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm painel-registros mt-4">
-      <div class="card-body">
-        <h2 class="h5 mb-3">Filtros</h2>
-        <form method="get" action="/dashboard" class="vstack gap-3">
-          <div>
-            <label for="filtro_aluno" class="form-label">Aluno</label>
-            <input
-              id="filtro_aluno"
-              class="form-control"
-              type="text"
-              name="aluno"
-              value="{{ filtros.aluno_filtro }}"
-              placeholder="Digite o nome do aluno"
-            >
-          </div>
-
-          <div class="row g-3">
-            <div class="col-12 col-sm-6">
-              <label for="data_de" class="form-label">De</label>
-              <input id="data_de" class="form-control" type="date" name="data_de" value="{{ filtros.data_de }}">
-            </div>
-            <div class="col-12 col-sm-6">
-              <label for="data_ate" class="form-label">Ate</label>
-              <input id="data_ate" class="form-control" type="date" name="data_ate" value="{{ filtros.data_ate }}">
-            </div>
-          </div>
-
-          <div class="d-flex gap-2 flex-wrap">
-            <button type="submit" class="btn btn-outline-primary">Aplicar filtros</button>
-            <a href="/dashboard" class="btn btn-outline-secondary">Limpar</a>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 
   <div class="col-12 col-xl-8">
@@ -114,20 +80,11 @@
             <label for="periodo_fim" class="form-label mb-1">Periodo (fim)</label>
             <input id="periodo_fim" class="form-control form-control-sm" type="date" name="periodo_fim" value="{{ filtros.periodo_fim }}">
           </div>
-          <div class="col-12 col-md-6 col-lg-2">
+          <div class="col-12 col-md-6 col-lg-3">
             <label for="data_filtro" class="form-label mb-1">Data</label>
             <input id="data_filtro" class="form-control form-control-sm" type="date" name="data_filtro" value="{{ filtros.data_filtro }}">
           </div>
-          <div class="col-12 col-md-6 col-lg-2">
-            <label for="professor_filtro" class="form-label mb-1">Professor</label>
-            <select id="professor_filtro" class="form-select form-select-sm" name="professor_filtro">
-              <option value="">Todos</option>
-              {% for professor in professores_disponiveis %}
-              <option value="{{ professor }}" {% if filtros.professor_filtro == professor %}selected{% endif %}>{{ professor }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12 col-md-6 col-lg-2">
+          <div class="col-12 col-md-6 col-lg-3">
             <label for="aluno_filtro" class="form-label mb-1">Aluno</label>
             <select id="aluno_filtro" class="form-select form-select-sm" name="aluno_filtro">
               <option value="">Todos</option>
@@ -198,13 +155,11 @@
                 </div>
                 {% endif %}
 
-                <div class="pt-3 d-flex justify-content-end">
-                  <a
-                    href="/dashboard?aluno={{ atividade.aluno_nome | urlencode }}"
-                    class="btn btn-outline-primary btn-sm me-2"
-                  >
-                    Ver historico
-                  </a>
+                <div class="pt-3 d-flex justify-content-end gap-2">
+                  <form method="post" action="/dashboard/atividade/excluir" onsubmit="return confirm('Deseja realmente excluir este log?');">
+                    <input type="hidden" name="atividade_id" value="{{ atividade.id }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Excluir</button>
+                  </form>
                   <button
                     type="button"
                     class="btn btn-outline-secondary btn-sm botao-editar-atividade"
@@ -235,32 +190,6 @@
       </div>
     </div>
 
-    {% if historico_aluno %}
-    <div class="card border-0 shadow-sm painel-atividades mt-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-          <div>
-            <h2 class="h5 mb-1">Historico completo do aluno</h2>
-            <p class="text-body-secondary mb-0">Lista cronologica decrescente das sessoes encontradas para "{{ filtros.aluno }}".</p>
-          </div>
-          <span class="badge text-bg-light border">{{ historico_aluno|length }} registro(s)</span>
-        </div>
-
-        <div class="vstack gap-3">
-          {% for item in historico_aluno %}
-          <article class="historico-item">
-            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
-              <strong>{{ item.data }} as {{ item.horario }}</strong>
-              <span class="badge text-bg-secondary">{{ item.aluno_nome }}</span>
-            </div>
-            <p class="mb-1"><strong>Conteudo:</strong> {{ item.conteudo }}</p>
-            <p class="mb-0 text-body-secondary"><strong>Observacoes:</strong> {{ item.observacoes }}</p>
-          </article>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-    {% endif %}
   </div>
 </section>
 
@@ -273,10 +202,6 @@
       </div>
       <div class="modal-body pt-2">
         <form method="post" action="/dashboard/registro" class="vstack gap-3">
-          <input type="hidden" name="redirect_aluno" value="{{ filtros.aluno }}">
-          <input type="hidden" name="redirect_data_de" value="{{ filtros.data_de }}">
-          <input type="hidden" name="redirect_data_ate" value="{{ filtros.data_ate }}">
-
           <div>
             <label for="titulo" class="form-label">Conteudo ministrado</label>
             <input id="titulo" class="form-control" type="text" name="titulo" required placeholder="Ex.: Leitura do capitulo 3">
@@ -362,10 +287,6 @@
       <div class="modal-body pt-2">
         <form method="post" action="/dashboard/atividade/editar" class="vstack gap-3">
           <input type="hidden" id="editar_atividade_id" name="atividade_id">
-          <input type="hidden" name="redirect_aluno" value="{{ filtros.aluno }}">
-          <input type="hidden" name="redirect_data_de" value="{{ filtros.data_de }}">
-          <input type="hidden" name="redirect_data_ate" value="{{ filtros.data_ate }}">
-
           <div>
             <label for="editar_titulo" class="form-label">Conteudo ministrado</label>
             <input id="editar_titulo" class="form-control" type="text" name="titulo" required>
