@@ -100,6 +100,12 @@ def update_activity(user_uid: str, activity: dict[str, Any]) -> None:
     )
 
 
+def delete_activity(user_uid: str, activity_id: str) -> None:
+    db = firestore.client()
+    teacher_ref = db.collection(PROFESSORAS_COLLECTION).document(user_uid)
+    teacher_ref.collection(ATIVIDADES_SUBCOLLECTION).document(activity_id).delete()
+
+
 def _serialize_aluno(doc: Any) -> dict[str, str]:
     data = doc.to_dict() or {}
     return {

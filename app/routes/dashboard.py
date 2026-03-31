@@ -37,11 +37,6 @@ async def dashboard(
         if not dashboard_error:
             dashboard_error = "Nao foi possivel carregar os dados do dashboard."
 
-    filters = dashboard_service.ActivityFilters(
-        aluno=aluno_filtro,
-        data_de=periodo_inicio,
-        data_ate=periodo_fim,
-    )
     activities = dashboard_service.build_activity_view_model(professor_data["atividades"])
     activities, filter_error = dashboard_service.apply_activity_filters(
         activities=activities,
@@ -95,22 +90,12 @@ async def dashboard_registrar_atividade(
     horario_realizacao: str = Form(...),
     concluida: str = Form(""),
     descricao: str = Form(""),
-    redirect_aluno: str = Form(default=""),
-    redirect_data_de: str = Form(default=""),
-    redirect_data_ate: str = Form(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
-    filters = dashboard_service.ActivityFilters(
-        aluno=redirect_aluno,
-        data_de=redirect_data_de,
-        data_ate=redirect_data_ate,
-    )
-
     if not firebase_app_ready:
         return dashboard_service.redirect_dashboard(
             "Firebase nao esta disponivel para salvar a atividade.",
             message_type="erro",
-            filters=filters,
         )
 
     selected_student_id = aluno_id.strip()
@@ -128,7 +113,6 @@ async def dashboard_registrar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel carregar os dados do(a) professor(a).",
             message_type="erro",
-            filters=filters,
         )
 
     existing_student_ids = {item["id"] for item in professor_data["alunos"]}
@@ -144,7 +128,7 @@ async def dashboard_registrar_atividade(
         concluded=concluida,
     )
     if error:
-        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
+        return dashboard_service.redirect_dashboard(error, message_type="erro")
 
     try:
         if student and student["id"] not in existing_student_ids:
@@ -156,12 +140,10 @@ async def dashboard_registrar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel salvar a atividade.",
             message_type="erro",
-            filters=filters,
         )
 
     return dashboard_service.redirect_dashboard(
         "Atividade registrada com sucesso.",
-        filters=filters,
     )
 
 
@@ -174,22 +156,12 @@ async def dashboard_editar_atividade(
     horario_realizacao: str = Form(...),
     concluida: str = Form(""),
     descricao: str = Form(""),
-    redirect_aluno: str = Form(default=""),
-    redirect_data_de: str = Form(default=""),
-    redirect_data_ate: str = Form(default=""),
     user: UsuarioSessao = Depends(require_login),
 ):
-    filters = dashboard_service.ActivityFilters(
-        aluno=redirect_aluno,
-        data_de=redirect_data_de,
-        data_ate=redirect_data_ate,
-    )
-
     if not firebase_app_ready:
         return dashboard_service.redirect_dashboard(
             "Firebase nao esta disponivel para editar a atividade.",
             message_type="erro",
-            filters=filters,
         )
 
     selected_student_id = aluno_id.strip()
@@ -207,7 +179,6 @@ async def dashboard_editar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel carregar os dados do(a) professor(a).",
             message_type="erro",
-            filters=filters,
         )
 
     activity, error = dashboard_service.update_activity(
@@ -221,7 +192,7 @@ async def dashboard_editar_atividade(
         concluded=concluida,
     )
     if error:
-        return dashboard_service.redirect_dashboard(error, message_type="erro", filters=filters)
+        return dashboard_service.redirect_dashboard(error, message_type="erro")
 
     try:
         if activity:
@@ -231,10 +202,38 @@ async def dashboard_editar_atividade(
         return dashboard_service.redirect_dashboard(
             "Nao foi possivel atualizar a atividade.",
             message_type="erro",
-            filters=filters,
         )
 
     return dashboard_service.redirect_dashboard(
         "Atividade editada com sucesso.",
-        filters=filters,
     )
+
+
+@router.post("/dashboard/atividade/excluir")
+async def dashboard_excluir_atividade(
+    atividade_id: str = Form(""),
+    user: UsuarioSessao = Depends(require_login),
+):
+    if not firebase_app_ready:
+        return dashboard_service.redirect_dashboard(
+            "Firebase nao esta disponivel para excluir a atividade.",
+            message_type="erro",
+        )
+
+    activity_id_clean = atividade_id.strip()
+    if not activity_id_clean:
+        return dashboard_service.redirect_dashboard(
+            "Nao foi possivel identificar a atividade para exclusao.",
+            message_type="erro",
+        )
+
+    try:
+        firestore_dashboard_service.delete_activity(user["uid"], activity_id_clean)
+    except Exception:
+        logger.exception("Falha ao excluir atividade no Firestore")
+        return dashboard_service.redirect_dashboard(
+            "Nao foi possivel excluir a atividade.",
+            message_type="erro",
+        )
+
+    return dashboard_service.redirect_dashboard("Atividade excluida com sucesso.")

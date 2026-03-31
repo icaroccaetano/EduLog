@@ -1,5 +1,4 @@
 import secrets
-from dataclasses import dataclass
 from datetime import date, datetime, time
 from urllib.parse import urlencode
 
@@ -15,14 +14,6 @@ from app.models import (
     TAMANHO_MAX_NOME_ALUNO,
     TAMANHO_MAX_TITULO_ATIVIDADE,
 )
-
-
-@dataclass
-class ActivityFilters:
-    aluno: str = ""
-    data_de: str = ""
-    data_ate: str = ""
-
 
 def load_teacher_data(
     user_uid: str,
@@ -44,16 +35,8 @@ def clean_text(value: str, max_length: int) -> str:
 def redirect_dashboard(
     message: str,
     message_type: str = "sucesso",
-    filters: ActivityFilters | None = None,
 ) -> RedirectResponse:
     query_params = {message_type: message}
-    if filters:
-        if filters.aluno:
-            query_params["aluno"] = filters.aluno
-        if filters.data_de:
-            query_params["data_de"] = filters.data_de
-        if filters.data_ate:
-            query_params["data_ate"] = filters.data_ate
 
     query = urlencode(query_params)
     return RedirectResponse(url=f"/dashboard?{query}", status_code=303)
@@ -395,46 +378,3 @@ def parse_boolean(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "on", "sim", "yes"}
     activity["concluida"] = completed
     return activity, None
-
-
-def filter_activities(
-    activities: list[dict],
-    filters: ActivityFilters,
-) -> list[dict]:
-    filtered_items = []
-    aluno_filter = filters.aluno.strip().casefold()
-    data_de = filters.data_de.strip()
-    data_ate = filters.data_ate.strip()
-
-    for activity in activities:
-        if aluno_filter and aluno_filter not in activity["aluno_nome"].casefold():
-            continue
-
-        activity_date = activity.get("data_realizacao", "")
-        if data_de and activity_date < data_de:
-            continue
-        if data_ate and activity_date > data_ate:
-            continue
-
-        filtered_items.append(activity)
-
-    return filtered_items
-
-
-def build_student_history(activities: list[dict], aluno_filter: str) -> list[dict]:
-    if not aluno_filter.strip():
-        return []
-
-    aluno_filter_casefold = aluno_filter.strip().casefold()
-    history = [
-        {
-            "data": activity["data_realizacao_formatada"],
-            "conteudo": activity["titulo"],
-            "observacoes": activity["descricao"] or "-",
-            "horario": activity["horario_realizacao"][:5],
-            "aluno_nome": activity["aluno_nome"],
-        }
-        for activity in activities
-        if aluno_filter_casefold in activity["aluno_nome"].casefold()
-    ]
-    return history
